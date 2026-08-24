@@ -9,10 +9,9 @@ function clamp(v: number, min: number, max: number) {
 }
 
 /**
- * Full-screen zoomable image: pinch to zoom, one-finger pan while zoomed,
- * double-tap to toggle 1x/2.5x. Built on Animated + PanResponder (no
- * gesture-handler dependency). When not zoomed, single-finger gestures are
- * left to the parent (so the viewer's FlatList keeps swiping between items).
+ * Zoomable image (pinch, pan while zoomed, double-tap) built on Animated +
+ * PanResponder. Unzoomed single-finger gestures pass through to the parent
+ * pager so item swiping still works.
  */
 export default function PinchZoomImage({
   uri,
@@ -63,8 +62,7 @@ export default function PinchZoomImage({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Only claim gestures ourselves when zoomed in (pan) or when a second
-      // finger lands (pinch) - otherwise the viewer's FlatList swipes pages.
+      // Claim gestures only when zoomed or pinching; else the pager swipes.
       onStartShouldSetPanResponder: () => cur.current.scale > 1,
       onMoveShouldSetPanResponder: (_e, g) =>
         g.numberActiveTouches === 2 || cur.current.scale > 1,

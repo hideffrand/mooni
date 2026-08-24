@@ -9,9 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Cache is the subset of operations the rest of the backend uses. Keeping it
-// an interface lets services be tested against an in-memory fake; *cache (the
-// Redis-backed type) satisfies it.
+// Cache lets services test against an in-memory fake instead of Redis.
 type Cache interface {
 	Get(ctx context.Context, key string) ([]byte, bool)
 	GetInt64(ctx context.Context, key string) int64
@@ -19,9 +17,7 @@ type Cache interface {
 	Incr(ctx context.Context, key string) int64
 }
 
-// cache is an optional Redis-backed key/value store. When Redis is not
-// configured (addr == "") every method is a silent no-op, so the server runs
-// exactly as before without a Redis instance.
+// cache is Redis-backed; with no addr configured every method is a no-op.
 type cache struct {
 	rdb *redis.Client
 }

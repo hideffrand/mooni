@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"mooni-backend/internal/alerts"
 	"mooni-backend/internal/auth"
 	"mooni-backend/internal/cache"
 	"mooni-backend/internal/config"
@@ -18,6 +19,7 @@ import (
 	"mooni-backend/internal/media"
 	"mooni-backend/internal/pairing"
 	"mooni-backend/internal/system"
+	"mooni-backend/internal/thumbs"
 )
 
 func main() {
@@ -36,8 +38,7 @@ func main() {
 		return
 	}
 
-	// Optional Redis-backed response cache. If Redis is unreachable at startup
-	// (or not configured at all) the server runs uncached, as before.
+	// Optional Redis cache: unconfigured or unreachable -> run uncached.
 	c := cache.New(cfg.RedisAddr, cfg.RedisPassword)
 	if c.Enabled() {
 		if err := c.Ping(context.Background()); err != nil {
@@ -49,23 +50,28 @@ func main() {
 		}
 	}
 
+	thumbGen := thumbs.New(thumbDir())
+
 	// File routes live on their own mux, wrapped with the API key check.
 	fileMux := http.NewServeMux()
 	svc := files.NewService(cfg.RootDir, c)
-	fileHandler := files.NewHandler(svc, cfg.MaxUploadBytes)
+	fileHandler := files.NewHandler(svc, cfg.MaxUploadBytes, thumbGen)
 	fileHandler.Register(fileMux)
 	protectedFiles := auth.RequireAPIKey(cfg.APIKey, fileMux)
 
-	// System stats are sensitive (they read the host), so they get the same
-	// API key check, on their own /api/system/ mux.
+	// System endpoints read host info - same API key check.
 	systemMux := http.NewServeMux()
 	sysHandler := system.NewHandler(cfg.RootDir, c)
 	sysHandler.Register(systemMux)
+
+	// Threshold alerts monitor stats and push via Expo; no-op until enabled.
+	alertStore := alerts.NewStore(alerts.DefaultPath())
+	alerts.NewHandler(alertStore).Register(systemMux)
+	go alerts.NewMonitor(cfg.RootDir, alertStore).Run(context.Background())
+
 	protectedSystem := auth.RequireAPIKey(cfg.APIKey, systemMux)
 
-	// Outer mux: health check stays public so the app (and you, with curl)
-	// can verify the server is reachable without a key; everything under
-	// /api/files/, /api/media/ and /api/system/ requires the key.
+	// Health check is public; everything under /api/files|media|system requires the key.
 	outer := http.NewServeMux()
 	outer.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -73,12 +79,10 @@ func main() {
 	})
 	outer.Handle("/api/files/", protectedFiles)
 	if cfg.MediaDir != "" {
-		// Media library (Photos-style) is optional: only exposed when the user
-		// points MOONI_MEDIA_DIR at a dedicated directory. Same auth wrapper -
-		// media endpoints read files off the host like the file ones.
+		// Optional media library behind MOONI_MEDIA_DIR, same auth wrapper.
 		mediaMux := http.NewServeMux()
 		mediaHandler := media.NewHandler(
-			media.NewService(cfg.MediaDir, c, thumbDir()),
+			media.NewService(cfg.MediaDir, c, thumbGen),
 			cfg.MaxUploadBytes,
 		)
 		mediaHandler.Register(mediaMux)
@@ -102,9 +106,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-// runPair prints a pairing code that the mobile app's "Paste Code" screen
-// can decode directly, so the person setting up a new phone/tablet never
-// has to type an IP address or API key by hand.
+// runPair prints a pairing code the mobile app can paste to add this device.
 func runPair(cfg *config.Config, name, hostOverride string) {
 	if name == "" {
 		if h, err := os.Hostname(); err == nil {
@@ -163,9 +165,8 @@ func logRequests(next http.Handler) http.Handler {
 	})
 }
 
-// thumbDir returns where generated media thumbnails are cached on disk.
-// Outside MOONI_MEDIA_DIR so the library index never sees them; ~/.mooni/
-// matches where install.sh keeps config (mode 700).
+// thumbDir returns the thumbnail disk-cache location, outside any indexed
+// library root.
 func thumbDir() string {
 	if home, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(home, ".mooni", "thumbs")

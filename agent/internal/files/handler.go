@@ -13,21 +13,27 @@ import (
 
 	"mooni-backend/internal/dto"
 	"mooni-backend/internal/fsutil"
+	"mooni-backend/internal/thumbs"
 )
+
+// thumbMaxDim is the longest edge of a generated thumbnail.
+const thumbMaxDim = 256
 
 type Handler struct {
 	svc            *Service
 	maxUploadBytes int64
+	thumbGen       *thumbs.Generator
 }
 
-func NewHandler(svc *Service, maxUploadBytes int64) *Handler {
-	return &Handler{svc: svc, maxUploadBytes: maxUploadBytes}
+func NewHandler(svc *Service, maxUploadBytes int64, thumbGen *thumbs.Generator) *Handler {
+	return &Handler{svc: svc, maxUploadBytes: maxUploadBytes, thumbGen: thumbGen}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/files/list", h.list)
 	mux.HandleFunc("GET /api/files/download", h.download)
 	mux.HandleFunc("GET /api/files/preview", h.preview)
+	mux.HandleFunc("GET /api/files/thumb", h.thumb)
 	mux.HandleFunc("POST /api/files/upload", h.upload)
 	mux.HandleFunc("POST /api/files/mkdir", h.mkdir)
 	mux.HandleFunc("POST /api/files/rename", h.rename)
@@ -35,8 +41,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/files/move", h.move)
 	mux.HandleFunc("DELETE /api/files/delete", h.delete)
 }
-
-// ---- helpers ----
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -56,8 +60,7 @@ func writeErr(w http.ResponseWriter, status int, err error) {
 	} else if os.IsPermission(err) {
 		msg = "permission denied"
 	} else {
-		// Business errors (e.g. "destination already exists") are fine to
-		// surface, but filesystem errors embed local paths - hide them.
+		// Surface business errors; hide filesystem errors that embed paths.
 		var pe *os.PathError
 		var le *os.LinkError
 		if errors.As(err, &pe) || errors.As(err, &le) {
@@ -68,8 +71,6 @@ func writeErr(w http.ResponseWriter, status int, err error) {
 	}
 	writeJSON(w, status, map[string]string{"error": msg})
 }
-
-// ---- handlers ----
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
@@ -86,9 +87,39 @@ func (h *Handler) download(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
-	// Same as download but without forcing a "Save As" dialog, and supports
-	// HTTP Range requests automatically (needed for video/audio scrubbing).
+	// Like download but inline, with HTTP Range support for media scrubbing.
 	h.serveFile(w, r, false)
+}
+
+// thumb serves a small cached JPEG so grids skip full-size originals;
+// unsupported types return 415 and the app falls back to an icon.
+func (h *Handler) thumb(w http.ResponseWriter, r *http.Request) {
+	abs, err := h.svc.resolve(r.URL.Query().Get("path"))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	info, statErr := os.Stat(abs)
+	if statErr != nil {
+		writeErr(w, http.StatusNotFound, statErr)
+		return
+	}
+	if info.IsDir() {
+		writeErr(w, http.StatusBadRequest, os.ErrInvalid)
+		return
+	}
+	cachePath, modTime, err := h.thumbGen.Get(abs, info, thumbMaxDim)
+	if err != nil {
+		if errors.Is(err, thumbs.ErrUnsupported) {
+			writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{"error": thumbs.ErrUnsupported.Error()})
+			return
+		}
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := thumbs.Serve(w, r, cachePath, modTime); err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+	}
 }
 
 func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request, attachment bool) {
@@ -113,8 +144,7 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request, attachment b
 		cd := mime.FormatMediaType("attachment", map[string]string{"filename": entry.Name})
 		w.Header().Set("Content-Disposition", cd)
 	}
-	// http.ServeContent handles Content-Type sniffing, Range requests
-	// (needed for video seeking), and conditional requests for us.
+	// ServeContent gives Content-Type sniffing + Range support (video seeking).
 	http.ServeContent(w, r, entry.Name, entry.ModTime, f)
 }
 

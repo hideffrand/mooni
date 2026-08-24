@@ -52,6 +52,22 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Device</Text>
+        <View style={styles.group}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => navigation.navigate("AlertSettings")}
+          >
+            <View style={styles.rowLabel}>
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.rowTitle}>Threshold Alerts</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Legal</Text>
         <View style={styles.group}>
           <TouchableOpacity

@@ -9,12 +9,8 @@ import (
 	"time"
 )
 
-// runPower initiates a reboot or shutdown of the host. It tries passwordless
-// sudo first (see install.sh's optional sudoers rule), then systemd-logind's
-// loginctl, which works for users with a local console session. The call
-// blocks until the command finishes or times out; a successful reboot/poweroff
-// typically returns within a second while the actual shutdown happens shortly
-// after, so the HTTP response still gets out.
+// runPower initiates reboot/shutdown via passwordless sudo, falling back to
+// systemd-logind. Returns quickly; the shutdown itself completes shortly after.
 func runPower(action string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

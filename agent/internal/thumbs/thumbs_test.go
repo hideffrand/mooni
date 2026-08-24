@@ -1,0 +1,96 @@
+package thumbs
+
+import (
+	"bytes"
+	"errors"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func writeJPEG(t *testing.T, path string, w, h int) {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{uint8(x % 255), uint8(y % 255), 128, 255})
+		}
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := jpeg.Encode(f, img, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func stat(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info
+}
+
+func TestGetGeneratesAndCachesImage(t *testing.T) {
+	dir := t.TempDir()
+	g := New(t.TempDir())
+	src := filepath.Join(dir, "photo.jpg")
+	writeJPEG(t, src, 400, 200)
+
+	p1, _, err := g.Get(src, stat(t, src), 256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, format, err := image.Decode(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if format != "jpeg" || img.Bounds().Dx() != 256 || img.Bounds().Dy() != 128 {
+		t.Fatalf("expected 256x128 jpeg, got %dx%d %s", img.Bounds().Dx(), img.Bounds().Dy(), format)
+	}
+
+	// Cache hit: same path on second call.
+	p2, _, err := g.Get(src, stat(t, src), 256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p1 != p2 {
+		t.Fatal("expected cached path to be reused")
+	}
+}
+
+func TestGetUnsupportedTypes(t *testing.T) {
+	g := New(t.TempDir())
+	dir := t.TempDir()
+
+	webp := filepath.Join(dir, "pic.webp")
+	os.WriteFile(webp, []byte("RIFFxxxx"), 0o644)
+	if _, _, err := g.Get(webp, stat(t, webp), 256); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("webp: expected ErrUnsupported, got %v", err)
+	}
+
+	txt := filepath.Join(dir, "note.txt")
+	os.WriteFile(txt, []byte("hi"), 0o644)
+	if _, _, err := g.Get(txt, stat(t, txt), 256); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("txt: expected ErrUnsupported, got %v", err)
+	}
+
+	// Video without ffmpeg installed must also be unsupported.
+	vid := filepath.Join(dir, "clip.mp4")
+	os.WriteFile(vid, []byte("not really a video"), 0o644)
+	gNoFFmpeg := &Generator{dir: t.TempDir(), sem: make(chan struct{}, 1)}
+	if _, _, err := gNoFFmpeg.Get(vid, stat(t, vid), 256); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("video without ffmpeg: expected ErrUnsupported, got %v", err)
+	}
+}

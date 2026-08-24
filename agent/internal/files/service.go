@@ -21,15 +21,10 @@ type Service struct {
 	cache cache.Cache
 }
 
-// listCacheTTL bounds how long a directory listing is served stale. The API's
-// own mutations invalidate the cache immediately; the TTL only covers changes
-// made out-of-band (shell, SMB, etc.).
+// listCacheTTL bounds staleness for out-of-band changes; mutations invalidate immediately.
 const listCacheTTL = 60 * time.Second
 
-// Keys: a global version key that bumps on every mutation plus one entry per
-// listing, each stamped with the version it was produced under. Reads compare
-// the stamped version against the current one, so a mutation invalidates every
-// cached listing in a single INCR.
+// Version-stamped listings: one INCR on mutation invalidates every cached list.
 const (
 	listVerKey = "mooni:files:list:ver"
 )
@@ -47,13 +42,11 @@ func NewService(root string, c cache.Cache) *Service {
 	return &Service{Root: root, cache: c}
 }
 
-// Invalidate drops all cached listings. Called by handlers whose mutations
-// bypass the service (uploads).
+// Invalidate drops all cached listings (uploads bypass this service).
 func (s *Service) Invalidate(ctx context.Context) {
 	s.cache.Incr(ctx, listVerKey)
 }
 
-// cachedList returns a fresh-enough listing if one is cached.
 func (s *Service) cachedList(ctx context.Context, userPath string) ([]dto.FileEntry, bool) {
 	data, ok := s.cache.Get(ctx, listKey(userPath))
 	if !ok {
@@ -162,9 +155,7 @@ func (s *Service) Rename(ctx context.Context, oldPath, newPath string) error {
 }
 
 func (s *Service) Move(ctx context.Context, src, dst string) error {
-	// Move is just rename when possible; fall back to copy+delete only when
-	// the files are on different filesystems (os.Rename → EXDEV). Refuse to
-	// clobber an existing destination, matching Rename.
+	// Rename when possible (EXDEV -> copy+delete); refuse to clobber.
 	srcAbs, err := s.resolve(src)
 	if err != nil {
 		return err

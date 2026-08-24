@@ -17,6 +17,7 @@ interface Props {
   placeholder?: string;
   initialValue?: string;
   confirmLabel?: string;
+  keyboardType?: "default" | "numeric";
   onCancel: () => void;
   onConfirm: (value: string) => void;
 }
@@ -27,6 +28,7 @@ export default function PromptModal({
   placeholder,
   initialValue = "",
   confirmLabel = "OK",
+  keyboardType = "default",
   onCancel,
   onConfirm,
 }: Props) {
@@ -52,6 +54,7 @@ export default function PromptModal({
             onChangeText={setValue}
             placeholder={placeholder}
             placeholderTextColor={colors.textSecondary}
+            keyboardType={keyboardType}
             autoFocus
             autoCapitalize="none"
             autoCorrect={false}

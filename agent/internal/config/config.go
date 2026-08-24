@@ -8,8 +8,7 @@ import (
 
 // Config holds runtime configuration loaded from environment variables.
 type Config struct {
-	// RootDir is the ONLY directory tree the API is allowed to touch.
-	// All file operations are sandboxed inside this path.
+	// RootDir is the ONLY directory tree the API may touch.
 	RootDir string
 	// APIKey must be sent by clients in the "X-API-Key" header.
 	APIKey string
@@ -21,8 +20,7 @@ type Config struct {
 	RedisAddr string
 	// RedisPassword is optional and only used when RedisAddr is set.
 	RedisPassword string
-	// MediaDir is a separate, optional directory for the media library
-	// (images/videos only). Empty means the media feature is disabled.
+	// MediaDir optionally enables the media library; empty means disabled.
 	MediaDir string
 }
 

@@ -8,10 +8,9 @@ import (
 
 var ErrOutsideRoot = errors.New("path escapes the allowed root directory")
 
-// Resolve takes a user-supplied relative path (e.g. "Photos/2024/img.jpg" or
-// "" for root) and safely joins it against root, guaranteeing the result
-// can never escape root via "..", absolute paths, or symlinks that point
-// outside the root. The returned path has symlinks resolved.
+// Resolve safely joins a user-supplied relative path against root,
+// guaranteeing the result can't escape via "..", absolute paths, or symlinks
+// pointing outside root.
 func Resolve(root, userPath string) (string, error) {
 	// Treat the incoming path as relative no matter what the client sends.
 	cleanUser := filepath.Clean("/" + userPath) // forces a leading slash, collapses ".."

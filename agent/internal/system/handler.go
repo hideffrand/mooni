@@ -72,17 +72,14 @@ func (h *Handler) issueToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) power(w http.ResponseWriter, r *http.Request, action string) {
-	// Require a confirm token fetched right before the call (see the app's
-	// biometric gate): a leaked API key or a replayed request alone can't
-	// reboot or shut down the machine.
+	// A fresh single-use confirm token must precede the call (replay protection).
 	if !h.confirm.consume(r.Header.Get("X-Confirm-Token")) {
 		writeJSON(w, http.StatusForbidden, map[string]string{
 			"error": "missing or expired confirm token; request a fresh one first",
 		})
 		return
 	}
-	// Detached from the request: if the phone drops the connection mid-reboot,
-	// the command must still run.
+	// Detached from the request: must run even if the phone disconnects mid-reboot.
 	if err := runPower(action); err != nil {
 		log.Printf("power %s error: %v", action, err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{

@@ -70,9 +70,7 @@ function formatUptime(seconds: number): string {
   return parts.join(" ") || "<1m";
 }
 
-// ---------------------------------------------------------------------------
-// Color ramps - a single source of truth for "how worried should this look".
-// ---------------------------------------------------------------------------
+// Color ramps: severity -> color.
 
 type ColorStop = { p: number; c: string };
 
@@ -83,8 +81,7 @@ const LOAD_STOPS: ColorStop[] = [
   { p: 100, c: "#EF4444" }, // red
 ];
 
-// Temps are gauged against a 0–95°C scale, which is a sane ceiling for
-// consumer CPUs/boards without needing device-specific thresholds.
+// Temps gauged against a 0–95°C scale (sane consumer-hardware ceiling).
 const TEMP_MAX_C = 95;
 const TEMP_STOPS: ColorStop[] = [
   { p: 0, c: "#38BDF8" }, // cool blue
@@ -141,10 +138,7 @@ function usePulse(active: boolean) {
   return { scale, opacity };
 }
 
-// ---------------------------------------------------------------------------
-// Meter - a plain fill bar, colored as a solid from a 5-band range (0–20,
-// 20–40, 40–60, 60–80, 80–100), rather than a continuous gradient.
-// ---------------------------------------------------------------------------
+// Meter: solid fill bar banded into 5 ranges (not a gradient).
 
 const METER_RANGES: { max: number; color: string }[] = [
   { max: 20, color: "#22C55E" }, // green
@@ -190,9 +184,7 @@ const meterStyles = StyleSheet.create({
   fill: {},
 });
 
-// ---------------------------------------------------------------------------
-// CPU - a little chip with pin rows, glowing by load.
-// ---------------------------------------------------------------------------
+// CPU: little chip with pin rows, glowing by load.
 
 function ChipGauge({ percent, colors }: { percent: number; colors: ThemeColors }) {
   const styles = makeStyles(colors);
@@ -229,9 +221,7 @@ function ChipGauge({ percent, colors }: { percent: number; colors: ThemeColors }
   );
 }
 
-// ---------------------------------------------------------------------------
-// Temperature - a real thermometer: mercury rises, bulb glows.
-// ---------------------------------------------------------------------------
+// Temperature: thermometer with rising mercury and glowing bulb.
 
 const THERMO_TUBE_HEIGHT = 58;
 
@@ -265,7 +255,7 @@ function Thermometer({ celsius, colors }: { celsius: number; colors: ThemeColors
   );
 }
 
-// ---------------------------------------------------------------------------
+// ---
 
 function StatsBody({ stats, colors }: { stats: SystemStats; colors: ThemeColors }) {
   const styles = makeStyles(colors);

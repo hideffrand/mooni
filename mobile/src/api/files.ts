@@ -47,13 +47,8 @@ export async function deleteItem(client: AxiosInstance, path: string) {
 export type UploadProgressCallback = (bytesSent: number, totalBytes: number) => void;
 
 /**
- * Uploads a local file (picked via expo-document-picker) into `destDir`
- * on the server using multipart/form-data.
- *
- * Uses expo-file-system's createUploadTask (rather than uploadAsync) because
- * only the task variant exposes a progress callback - needed to drive
- * per-file progress bars in the UI. Returns an object with an `uploadAsync`
- * to kick things off and a `cancel` to abort mid-flight if ever needed.
+ * Multipart upload into destDir via createUploadTask (the only variant
+ * exposing progress callbacks). Returns { uploadAsync, cancel }.
  */
 export function createFileUpload(
   baseUrl: string,
@@ -101,10 +96,7 @@ export async function uploadFile(
   await uploadAsync();
 }
 
-/**
- * Downloads a remote file into the device's document directory and
- * returns the local URI, ready to be shared via expo-sharing.
- */
+/** Downloads a remote file and returns the local URI. */
 export async function downloadFile(
   baseUrl: string,
   apiKey: string,

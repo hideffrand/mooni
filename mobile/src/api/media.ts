@@ -16,11 +16,7 @@ export function mediaUrl(
   return `${settings.baseUrl}/api/media/${endpoint}?${params.toString()}`;
 }
 
-/**
- * Uploads a gallery asset into the media library root. Reuses the file
- * uploader; the media endpoint ignores the multipart "path" field and saves
- * flat into its dedicated directory.
- */
+/** Uploads into the media library root (multipart path field ignored). */
 export function uploadMedia(
   baseUrl: string,
   apiKey: string,

@@ -13,9 +13,8 @@ import (
 	"mooni-backend/internal/dto"
 )
 
-// Collect gathers a snapshot of the machine's health from /proc and sysfs.
-// rootDir is used only to report the disk usage of the filesystem the app
-// actually manages. Returns an error if the host isn't Linux with /proc.
+// Collect gathers a machine-health snapshot from /proc and sysfs;
+// rootDir scopes the reported disk usage.
 func Collect(rootDir string) (dto.SystemStats, error) {
 	hostname, err := os.Hostname()
 	if err != nil {

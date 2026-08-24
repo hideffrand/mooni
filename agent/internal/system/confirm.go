@@ -11,10 +11,8 @@ import (
 // confirmTokenTTL is how long an issued confirm token stays valid.
 const confirmTokenTTL = 60 * time.Second
 
-// confirmStore issues short-lived, single-use tokens that must accompany
-// destructive power commands. A leaked or replayed API key alone can't
-// reboot or shut down the machine: it needs a fresh token fetched right
-// before the call.
+// confirmStore issues short-lived, single-use tokens required for power
+// commands, so a leaked API key alone can't reboot/shutdown the machine.
 type confirmStore struct {
 	mu    sync.Mutex
 	token string

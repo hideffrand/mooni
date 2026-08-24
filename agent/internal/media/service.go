@@ -13,6 +13,7 @@ import (
 	"mooni-backend/internal/cache"
 	"mooni-backend/internal/dto"
 	"mooni-backend/internal/fsutil"
+	"mooni-backend/internal/thumbs"
 )
 
 const (
@@ -20,15 +21,7 @@ const (
 	KindVideo = "video"
 )
 
-var imageExt = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".bmp": true,
-}
-var videoExt = map[string]bool{
-	".mp4": true, ".mov": true, ".m4v": true, ".webm": true, ".mkv": true,
-}
-
-// listCacheTTL bounds how long the library index is served stale. Uploads and
-// deletes invalidate immediately; the TTL covers out-of-band changes.
+// listCacheTTL bounds staleness for out-of-band changes; uploads/deletes invalidate immediately.
 const listCacheTTL = 30 * time.Second
 
 const (
@@ -44,11 +37,11 @@ type cachedList struct {
 type Service struct {
 	Root     string
 	cache    cache.Cache
-	thumbDir string
+	thumbGen *thumbs.Generator
 }
 
-func NewService(root string, c cache.Cache, thumbDir string) *Service {
-	return &Service{Root: root, cache: c, thumbDir: thumbDir}
+func NewService(root string, c cache.Cache, g *thumbs.Generator) *Service {
+	return &Service{Root: root, cache: c, thumbGen: g}
 }
 
 // resolve is the sandbox boundary: every user path goes through fsutil.
@@ -73,11 +66,11 @@ func (s *Service) List(ctx context.Context) ([]dto.MediaItem, error) {
 			}
 			return nil
 		}
-		ext := strings.ToLower(filepath.Ext(d.Name()))
+		ext := filepath.Ext(d.Name())
 		var kind string
-		if imageExt[ext] {
+		if thumbs.IsImageExt(ext) {
 			kind = KindImage
-		} else if videoExt[ext] {
+		} else if thumbs.IsVideoExt(ext) {
 			kind = KindVideo
 		} else {
 			return nil
@@ -106,8 +99,7 @@ func (s *Service) List(ctx context.Context) ([]dto.MediaItem, error) {
 	return items, nil
 }
 
-// Stat resolves userPath and returns the file's metadata plus its absolute
-// path (used by the preview handler to stream it with Range support).
+// Stat resolves userPath to metadata plus its absolute path.
 func (s *Service) Stat(userPath string) (dto.MediaItem, string, error) {
 	abs, err := s.resolve(userPath)
 	if err != nil {
@@ -120,11 +112,11 @@ func (s *Service) Stat(userPath string) (dto.MediaItem, string, error) {
 	if info.IsDir() {
 		return dto.MediaItem{}, "", &os.PathError{Op: "stat", Path: abs, Err: os.ErrInvalid}
 	}
-	ext := strings.ToLower(filepath.Ext(abs))
+	ext := filepath.Ext(abs)
 	kind := ""
-	if imageExt[ext] {
+	if thumbs.IsImageExt(ext) {
 		kind = KindImage
-	} else if videoExt[ext] {
+	} else if thumbs.IsVideoExt(ext) {
 		kind = KindVideo
 	}
 	return dto.MediaItem{
@@ -134,6 +126,19 @@ func (s *Service) Stat(userPath string) (dto.MediaItem, string, error) {
 		ModTime: info.ModTime(),
 		Kind:    kind,
 	}, abs, nil
+}
+
+// ThumbFile returns userPath's cached thumbnail path plus source modtime.
+func (s *Service) ThumbFile(userPath string, maxDim int) (string, time.Time, error) {
+	abs, err := s.resolve(userPath)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return s.thumbGen.Get(abs, info, maxDim)
 }
 
 // Delete removes one or more library entries. Refuses to delete the root.
@@ -154,8 +159,7 @@ func (s *Service) Delete(ctx context.Context, paths []string) error {
 	return nil
 }
 
-// Invalidate drops the cached index. Called by the upload handler, which
-// writes files outside this service.
+// Invalidate drops the cached index (uploads bypass this service).
 func (s *Service) Invalidate(ctx context.Context) {
 	s.cache.Incr(ctx, listVer)
 }

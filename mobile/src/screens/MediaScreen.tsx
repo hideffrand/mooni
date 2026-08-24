@@ -9,9 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Image,
   useWindowDimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,6 +77,8 @@ export default function MediaScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
+  // Videos whose thumbnail failed (no ffmpeg); cells show the play icon.
+  const [videoThumbFailed, setVideoThumbFailed] = useState<Set<string>>(new Set());
 
   const client = activeDevice ? createClient(activeDevice) : null;
 
@@ -228,7 +230,9 @@ export default function MediaScreen({ navigation }: Props) {
   const renderCell = (item: MediaItem, index: number) => {
     const ext = extOf(item.name);
     const isWebp = ext === "webp";
-    const source = item.kind === "image" && !isWebp ? "thumb" : "preview";
+    const useThumb =
+      item.kind === "image" ? !isWebp : !videoThumbFailed.has(item.path);
+    const source = useThumb ? "thumb" : "preview";
     const isSelected = selected.has(item.path);
     return (
       <TouchableOpacity
@@ -238,19 +242,26 @@ export default function MediaScreen({ navigation }: Props) {
         onPress={() => onCellPress(item, index)}
         onLongPress={() => onLongPress(item)}
       >
-        {item.kind === "image" ? (
+        {item.kind === "video" && videoThumbFailed.has(item.path) ? (
+          <View style={styles.videoCell}>
+            <Ionicons name="play-circle" size={34} color="rgba(255,255,255,0.9)" />
+          </View>
+        ) : (
           <Image
             source={{
               uri: activeDevice ? mediaUrl(activeDevice, source, item.path) : "",
               headers: { "X-API-Key": activeDevice?.apiKey ?? "" },
             }}
             style={styles.cellImage}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="disk"
+            recyclingKey={item.path}
+            onError={() => {
+              if (item.kind === "video") {
+                setVideoThumbFailed((prev) => new Set(prev).add(item.path));
+              }
+            }}
           />
-        ) : (
-          <View style={styles.videoCell}>
-            <Ionicons name="play-circle" size={34} color="rgba(255,255,255,0.9)" />
-          </View>
         )}
         {item.kind === "video" && (
           <View style={styles.videoBadge}>

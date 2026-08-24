@@ -12,6 +12,7 @@ import (
 
 	"mooni-backend/internal/dto"
 	"mooni-backend/internal/fsutil"
+	"mooni-backend/internal/thumbs"
 )
 
 // thumbMaxDim is the longest edge of a generated thumbnail.
@@ -34,8 +35,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/media/delete", h.delete)
 }
 
-// ---- helpers ----
-
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -51,7 +50,7 @@ func writeErr(w http.ResponseWriter, status int, err error) {
 	} else if errors.Is(err, os.ErrNotExist) {
 		status = http.StatusNotFound
 		msg = "not found"
-	} else if errors.Is(err, errUnsupportedThumb) {
+	} else if errors.Is(err, thumbs.ErrUnsupported) {
 		status = http.StatusUnsupportedMediaType
 		msg = "no thumbnail for this file type"
 	} else if errors.Is(err, os.ErrPermission) {
@@ -67,8 +66,6 @@ func writeErr(w http.ResponseWriter, status int, err error) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
-// ---- handlers ----
-
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	items, err := h.svc.List(r.Context())
 	if err != nil {
@@ -80,14 +77,14 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) thumb(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	b, err := h.svc.Thumb(path, thumbMaxDim)
+	cachePath, modTime, err := h.svc.ThumbFile(path, thumbMaxDim)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
-	w.Header().Set("Content-Type", "image/jpeg")
-	w.Header().Set("Cache-Control", "private, max-age=86400")
-	w.Write(b)
+	if err := thumbs.Serve(w, r, cachePath, modTime); err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+	}
 }
 
 func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
@@ -105,8 +102,7 @@ func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	w.Header().Set("Content-Disposition", "inline")
-	// http.ServeContent handles Content-Type sniffing and HTTP Range requests
-	// (needed for video seeking in the app's media viewer).
+	// ServeContent gives Content-Type sniffing + Range support (video seeking).
 	http.ServeContent(w, r, entry.Name, entry.ModTime, f)
 }
 

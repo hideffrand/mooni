@@ -11,6 +11,7 @@ import HomeScreen from "../screens/HomeScreen";
 import FileBrowserScreen from "../screens/FileBrowserScreen";
 import FilePreviewScreen from "../screens/FilePreviewScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import AlertSettingsScreen from "../screens/AlertSettingsScreen";
 import LegalScreen from "../screens/LegalScreen";
 import ShareUploadScreen from "../screens/ShareUploadScreen";
 import MediaScreen from "../screens/MediaScreen";
@@ -18,6 +19,8 @@ import MediaViewerScreen from "../screens/MediaViewerScreen";
 import { MediaItem } from "../types";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
+import { createClient } from "../api/client";
+import { registerPushForDevice } from "../utils/pushNotifications";
 
 export type RootStackParamList = {
   DeviceList: undefined;
@@ -27,6 +30,7 @@ export type RootStackParamList = {
   FileBrowser: { path: string } | undefined;
   FilePreview: { path: string; name: string };
   Settings: undefined;
+  AlertSettings: undefined;
   Legal: undefined;
   ShareUpload: undefined;
   Media: undefined;
@@ -55,6 +59,15 @@ export default function RootNavigator() {
   const { loading, activeDevice } = useDevices();
   const { mode, colors } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  // Best-effort: hand this phone's Expo push token to the active device's
+  // backend so it can push threshold alerts. No-op in Expo Go / when denied.
+  const activeDeviceId = activeDevice?.id;
+  useEffect(() => {
+    if (activeDevice && activeDeviceId) {
+      registerPushForDevice(createClient(activeDevice), activeDeviceId);
+    }
+  }, [activeDevice, activeDeviceId]);
 
   if (loading) return null;
 
@@ -129,6 +142,11 @@ export default function RootNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{ title: "Settings" }}
+        />
+        <Stack.Screen
+          name="AlertSettings"
+          component={AlertSettingsScreen}
+          options={{ title: "Threshold Alerts" }}
         />
         <Stack.Screen
           name="Legal"

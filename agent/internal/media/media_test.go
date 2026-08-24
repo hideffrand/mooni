@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"mooni-backend/internal/thumbs"
 )
 
 type fakeCache struct {
@@ -70,7 +72,7 @@ func writeJPEG(t *testing.T, path string, w, h int) {
 
 func TestListFiltersMediaAndSortsNewestFirst(t *testing.T) {
 	dir := t.TempDir()
-	svc := NewService(dir, newFake(), t.TempDir())
+	svc := NewService(dir, newFake(), thumbs.New(t.TempDir()))
 	ctx := context.Background()
 
 	writeJPEG(t, filepath.Join(dir, "a.jpg"), 100, 100)
@@ -98,14 +100,18 @@ func TestListFiltersMediaAndSortsNewestFirst(t *testing.T) {
 
 func TestThumbDownscalesAndCaches(t *testing.T) {
 	dir := t.TempDir()
-	thumbDir := t.TempDir()
-	svc := NewService(dir, newFake(), thumbDir)
+	thumbGen := thumbs.New(t.TempDir())
+	svc := NewService(dir, newFake(), thumbGen)
 	ctx := context.Background()
 
 	writeJPEG(t, filepath.Join(dir, "big.jpg"), 400, 200)
 	_, _ = svc.List(ctx) // prime the cache path
 
-	b, err := svc.Thumb("big.jpg", 256)
+	p1, _, err := svc.ThumbFile("big.jpg", 256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,19 +126,19 @@ func TestThumbDownscalesAndCaches(t *testing.T) {
 		t.Fatalf("expected 128px tall thumb, got %d", got)
 	}
 
-	// Second call must be served from the on-disk cache (same bytes).
-	b2, err := svc.Thumb("big.jpg", 256)
+	// Second call must be served from the on-disk cache (same file).
+	p2, _, err := svc.ThumbFile("big.jpg", 256)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(b, b2) {
-		t.Fatal("expected identical cached thumbnail")
+	if p1 != p2 {
+		t.Fatal("expected identical cached thumbnail path")
 	}
 }
 
 func TestDeleteRefusesRoot(t *testing.T) {
 	dir := t.TempDir()
-	svc := NewService(dir, newFake(), t.TempDir())
+	svc := NewService(dir, newFake(), thumbs.New(t.TempDir()))
 	if err := svc.Delete(context.Background(), []string{""}); err == nil {
 		t.Fatal("expected error when deleting the root")
 	}

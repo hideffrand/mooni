@@ -22,10 +22,8 @@ interface Props {
   onConfirm: () => void;
 }
 
-// Confirm modal for destructive actions. With a `token` it's a GitHub-style
-// "type the random text to confirm" guard: the confirm button stays disabled
-// until the exact token is typed. Without one it's a plain confirm dialog
-// (used when the device lock prompt handles the actual gate).
+// Destructive-action confirm: with a token requires typing it exactly;
+// without, a plain confirm dialog.
 export default function TypeToConfirmModal({
   visible,
   title,

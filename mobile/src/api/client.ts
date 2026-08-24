@@ -13,7 +13,7 @@ export function createClient(settings: ServerSettings): AxiosInstance {
 
 export function fileUrl(
   settings: ServerSettings,
-  endpoint: "download" | "preview",
+  endpoint: "download" | "preview" | "thumb",
   path: string
 ): string {
   const params = new URLSearchParams({ path });

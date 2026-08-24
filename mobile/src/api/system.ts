@@ -1,5 +1,5 @@
 import { AxiosInstance } from "axios";
-import { SystemStats } from "../types";
+import { AlertConfig, SystemStats } from "../types";
 
 export async function getSystemStats(client: AxiosInstance): Promise<SystemStats> {
   const res = await client.get<SystemStats>("/api/system/stats");
@@ -21,4 +21,24 @@ export async function powerAction(
   await client.post(`/api/system/${action}`, null, {
     headers: { "X-Confirm-Token": confirmToken },
   });
+}
+
+export async function getAlertConfig(client: AxiosInstance): Promise<AlertConfig> {
+  const res = await client.get<AlertConfig>("/api/system/alerts");
+  return res.data;
+}
+
+export async function updateAlertConfig(
+  client: AxiosInstance,
+  config: AlertConfig
+): Promise<AlertConfig> {
+  const res = await client.put<AlertConfig>("/api/system/alerts", config);
+  return res.data;
+}
+
+export async function registerPushToken(
+  client: AxiosInstance,
+  token: string
+): Promise<void> {
+  await client.post("/api/system/push-token", { token });
 }

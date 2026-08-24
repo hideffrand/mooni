@@ -9,8 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
 import * as DocumentPicker from "expo-document-picker";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -46,7 +46,9 @@ interface UploadItem {
   error?: string;
 }
 
-const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+const VIDEO_EXT = ["mp4", "mov", "m4v", "webm", "mkv"];
+// webp: server thumbnailer can't decode it, so those still stream full preview.
+const SERVER_THUMB_EXT = ["jpg", "jpeg", "png", "gif", "bmp"];
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -103,6 +105,8 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
   const [copyTarget, setCopyTarget] = useState<FileEntry | null>(null);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  // Paths whose thumbnail request failed; those cells show a plain icon.
+  const [thumbFailed, setThumbFailed] = useState<Set<string>>(new Set());
 
   const patchUpload = (id: string, patch: Partial<UploadItem>) =>
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -110,8 +114,7 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   const dismissUpload = (id: string) =>
     setUploads((prev) => prev.filter((u) => u.id !== id));
 
-  // Auto-clear finished uploads a couple seconds after they complete,
-  // but leave failed ones in place until the person dismisses them.
+  // Auto-clear finished uploads; failures stay until dismissed.
   useEffect(() => {
     const doneIds = uploads.filter((u) => u.status === "done").map((u) => u.id);
     if (doneIds.length === 0) return;
@@ -137,9 +140,7 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
     }));
     setUploads((prev) => [...prev, ...items]);
 
-    // Sequential rather than Promise.all: keeps progress bars readable,
-    // avoids hammering the device with N parallel multipart streams, and
-    // means one failure doesn't abort uploads already in flight.
+    // Sequential: readable progress bars, no N-way parallel streams.
     for (let i = 0; i < picked.assets.length; i++) {
       const asset = picked.assets[i];
       const item = items[i];
@@ -288,9 +289,15 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
 
   const renderGridItem = ({ item }: { item: FileEntry }) => {
     const ext = extOf(item.name);
-    const isImage = !item.isDir && IMAGE_EXT.includes(ext);
+    const wantsThumb =
+      !item.isDir && activeDevice && SERVER_THUMB_EXT.includes(ext);
+    const isVideoThumb = !item.isDir && VIDEO_EXT.includes(ext) && !thumbFailed.has(item.path);
     const thumbUri =
-      isImage && activeDevice ? fileUrl(activeDevice, "preview", item.path) : null;
+      wantsThumb || isVideoThumb
+        ? fileUrl(activeDevice!, "thumb", item.path)
+        : !item.isDir && ext === "webp"
+          ? fileUrl(activeDevice!, "preview", item.path)
+          : null;
 
     return (
       <TouchableOpacity
@@ -303,7 +310,12 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
             <Image
               source={{ uri: thumbUri, headers: { "X-API-Key": activeDevice?.apiKey ?? "" } }}
               style={styles.cardImage}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="disk"
+              recyclingKey={item.path}
+              onError={() =>
+                setThumbFailed((prev) => new Set(prev).add(item.path))
+              }
             />
           ) : (
             <Ionicons

@@ -32,9 +32,7 @@ func TerminalQR(code string) (string, error) {
 	return q.ToSmallString(false), nil
 }
 
-// TailscaleIPv4 shells out to the local `tailscale` CLI to find this
-// machine's Tailscale IP. Returns an error if Tailscale isn't installed
-// or not connected.
+// TailscaleIPv4 finds this machine's Tailscale IP via the tailscale CLI.
 func TailscaleIPv4() (string, error) {
 	out, err := exec.Command("tailscale", "ip", "-4").Output()
 	if err != nil {
@@ -47,9 +45,7 @@ func TailscaleIPv4() (string, error) {
 	return ip, nil
 }
 
-// LANIPv4 returns the machine's first non-loopback IPv4 from `hostname -I`.
-// Best-effort fallback so a pairing code can still be printed when Tailscale
-// isn't installed.
+// LANIPv4 returns the first non-loopback IPv4 (fallback without Tailscale).
 func LANIPv4() (string, error) {
 	out, err := exec.Command("hostname", "-I").Output()
 	if err != nil {

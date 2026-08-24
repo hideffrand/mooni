@@ -38,11 +38,7 @@ export interface DeviceProfile {
   apiKey: string;
 }
 
-/**
- * The pairing code is what a non-technical user pastes into the app to
- * add a device. It's just base64(JSON) of these three fields, generated
- * by the backend's install script - no manual typing of IP/API key needed.
- */
+/** Pairing code: base64(JSON) pasted from the backend's install script. */
 export interface PairingPayload {
   name: string;
   baseUrl: string;
@@ -69,4 +65,14 @@ export interface SystemStats {
   };
   processes: number;
   tempsCelsius: number[];
+}
+
+/** Backend-persisted alert thresholds; 0 disables a metric. */
+export interface AlertConfig {
+  enabled: boolean;
+  cpuPercent: number;
+  memPercent: number;
+  diskPercent: number;
+  tempCelsius: number;
+  cooldownMinutes: number;
 }
