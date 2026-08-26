@@ -53,9 +53,10 @@ Change the format in one → change the other. App code uses global `btoa`/`atob
 
 - All paths are root-relative, forward-slashed (see `fsutil.ToRelative` and app `src/types/index.ts` `FileEntry`).
 - UI text, error messages, READMEs, and install.sh prompts are in English - keep new user-facing strings English.
-- App architecture: `src/api` (axios client + file ops + system/power + media), `src/context/DevicesContext.tsx` (persisted devices via AsyncStorage, API keys via SecureStore) and `ThemeContext.tsx` (dark/light, persisted in AsyncStorage key `mooni.theme.v1`), `src/navigation/RootNavigator.tsx`, `src/screens/`, `src/screens/components/` (`PromptModal`, `ActionSheet`, `TypeToConfirmModal`, `PinchZoomImage`).
+- App architecture: `src/api` (axios client + file ops + system/power + media + alerts), `src/context/DevicesContext.tsx` (persisted devices via AsyncStorage, API keys via SecureStore) and `ThemeContext.tsx` (dark/light, persisted in AsyncStorage key `mooni.theme.v1`), `src/navigation/RootNavigator.tsx`, `src/screens/`, `src/screens/components/` (`PromptModal`, `ActionSheet`, `TypeToConfirmModal`, `PinchZoomImage`, `FileTypeIcon`).
 - Navigation: initial route is **Home** when a device is active, else **DeviceList**. Stack: DeviceList → AddDevice / ScanQR, Home → FileBrowser → FilePreview / Settings, Home → Media → MediaViewer, plus a `ShareUpload` modal pushed by `ShareIntentGate` (RootNavigator.tsx) when the app opens from the system share sheet. New screens must pull colors from `useTheme()` (theme-aware), not hardcode.
 - App is **Android-first** - don't add iOS-only APIs (no `ActionSheetIOS`, no iOS-only styling). Long-press menus use the custom `ActionSheet` component because Android's `Alert` caps at 3 buttons.
+- File-type visuals (thumbnails vs colored ext badges vs glyphs) come from `src/utils/fileTypes.ts` + the shared `FileTypeIcon` component - don't re-implement per-screen icon mapping (ShareUploadScreen's `ionIconFor` uses the same util).
 - App downloads/uploads stream via `expo-file-system` (`downloadAsync`/`uploadAsync`), not axios, for large files.
 - Power control (reboot/shutdown from Home) IS implemented. It's gated by the
   phone's device lock (fingerprint/PIN via `expo-local-authentication`, in

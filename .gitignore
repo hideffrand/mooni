@@ -1,14 +1,43 @@
+# --- dependencies ---
 node_modules/
-.env
-.DS_Store
-*.log
-.codegraph/
 
-mobile/.expo/
-mobile/dist/
+# --- env & secrets ---
+.env
+.env.*
+*.pem
+
+# --- builds / output ---
+.next/
+out/
+build/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Expo / React Native app (mobile/) ---
+.expo/
 mobile/android/
 mobile/ios/
-mobile/*.apk
+# APKs are built artifacts - except the landing page's downloadable,
+# which you may want to commit at web/public/mooni.apk.
+*.apk
+!web/public/*.apk
 
-agent/dist/
+# --- Go agent (agent/) ---
 agent/mooni-backend
+
+# --- logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- local tooling ---
+.opencode/
+.codegraph/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db

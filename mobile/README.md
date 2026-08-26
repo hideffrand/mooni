@@ -18,17 +18,22 @@ Expo + React Native + TypeScript. Typecheck-clean (`npx tsc --noEmit`).
   `expo-secure-store` (Android Keystore), not in AsyncStorage.
 - **File Browser**: list folders, navigate into subfolders, pull-to-refresh,
   create new folders, upload files, and long-press an item for Rename / Copy /
-  Move / Delete. The long-press menu uses the app's own `ActionSheet`
-  component (not `Alert`) because `Alert` on Android only supports 3 buttons.
+  Move / Delete. Rows and grid cards show server thumbnails for images/videos
+  and colored extension badges for document types (PDF/XLS/ZIP/...) via the
+  shared `FileTypeIcon` component. The long-press menu uses the app's own
+  `ActionSheet` component (not `Alert`) because `Alert` on Android only
+  supports 3 buttons.
 - **File Preview**: preview images & videos (streaming, with seek support
   because the backend uses HTTP Range); other files can be downloaded and
-  shared (share sheet) to other apps on the phone.
+  shared (share sheet) to other apps on the phone. Multi-select downloads land
+  in `Downloads/mooni` on the phone when possible, inside the app otherwise.
 - **Media (Photos-style library)**: a dedicated media timeline over a separate
-  folder on the server - a date-grouped grid of thumbnails, a full-screen
-  viewer you swipe through (pinch-to-zoom on images, inline video playback
-  with seek), long-press multi-select with bulk download/delete, and gallery
-  upload (multi-pick from the photo picker). Requires the backend to be started
-  with `MOONI_MEDIA_DIR`; otherwise the screen shows a "not enabled" notice.
+  folder on the server - a date-grouped grid of thumbnails, top-level album
+  strip for drilling into library subfolders, a full-screen viewer you swipe
+  through (pinch-to-zoom on images with drag-down-to-dismiss, inline video
+  playback with seek), long-press multi-select with bulk download/delete, and
+  gallery upload (multi-pick from the photo picker). Requires the backend to be
+  started with `MOONI_MEDIA_DIR`; otherwise the screen shows a "not enabled" notice.
 - **Home dashboard (first screen)**: live system health - CPU, memory, disk,
   load average, uptime, process count, and temperature - auto-refreshing
   every few seconds, with the selected device's name in the header.
@@ -44,6 +49,10 @@ Expo + React Native + TypeScript. Typecheck-clean (`npx tsc --noEmit`).
 - **Settings → Preferences → Appearance**: switch between Dark and Light
   theme. The choice is persisted on the device (AsyncStorage) and applies
   app-wide - screens, modals, headers, and the status bar.
+- **Alerts**: set CPU/RAM/disk/temperature thresholds per device (Settings →
+  Alerts); the backend watches them and pushes an Expo notification when one
+  is crossed. Requires notifications permission on the phone; thresholds are
+  stored server-side in `~/.mooni/alerts.json`.
 
 ## How to distribute to other people (no coding needed)
 
@@ -101,19 +110,26 @@ they don't need to share a network).
 
 ```
 src/
-  api/             axios client + API functions (list, upload, system/power, media)
+  api/             axios client + API functions (list, upload, system/power, media, alerts)
   context/         DevicesContext - saved devices (AsyncStorage) &
                    each device's API key (expo-secure-store)
-  navigation/      React Navigation stack (DeviceList → Home → FileBrowser → FilePreview,
-                   Home → Media → MediaViewer)
+  navigation/      React Navigation stack: DeviceList → AddDevice / ScanQR,
+                   Home → FileBrowser → FilePreview / Settings → Alerts / Legal,
+                   Home → Media → MediaViewer, plus the ShareUpload modal
+                   (opened by ShareIntentGate when sharing files into the app)
   screens/         HomeScreen (dashboard: stats + device switcher + power),
-                   DeviceListScreen, AddDeviceScreen, FileBrowserScreen, FilePreviewScreen,
-                   MediaScreen (Photos-style timeline + multi-select + gallery upload),
+                   DeviceListScreen, AddDeviceScreen, ScanQRScreen,
+                   FileBrowserScreen, FilePreviewScreen, SettingsScreen,
+                   AlertSettingsScreen (thresholds), LegalScreen (terms/privacy),
+                   ShareUploadScreen (system share-sheet target),
+                   MediaScreen (Photos-style timeline + albums + multi-select),
                    MediaViewerScreen (full-screen swipeable viewer)
   screens/components/  PromptModal (input dialog), ActionSheet (long-press menu,
                    Android-safe), TypeToConfirmModal (type-a-token power confirm),
-                   PinchZoomImage (pinch/pan/double-tap zoom, no extra deps)
-  utils/           encode/decode pairing code (must stay in sync with internal/pairing in the backend)
+                   PinchZoomImage (pinch/pan/double-tap zoom on expo-image),
+                   FileTypeIcon (thumbnail / extension badge / glyph per file type)
+  utils/           encode/decode pairing code (must stay in sync with internal/pairing in the backend),
+                   fileTypes.ts - extension → icon/badge/thumbnail mapping
   types/           shared TypeScript types
 ```
 

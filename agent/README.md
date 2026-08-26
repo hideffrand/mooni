@@ -92,11 +92,21 @@ source ~/.mooni/config.env && ./mooni-backend -pair -name "Family Phone"
   `install.sh` (or a local console session for `loginctl`).
 - `POST /api/system/shutdown` - power the machine off. Same requirement as
   reboot.
-- `GET  /api/media/list` - Photos-style media library index (see below).
+- `GET  /api/media/list` - Photos-style media library index (see below). Add
+  `mode=browse&path=...` to scope the response to one library folder: its
+  subfolders as albums (`folders`, each with a recursive item count and newest
+  cover) plus the media files directly inside it (`items`).
 - `GET  /api/media/thumb?path=...` - downscaled image thumbnail.
 - `GET  /api/media/preview?path=...` - stream a media file (Range support).
 - `POST /api/media/upload` - multipart upload (`file`, one or more).
 - `POST /api/media/delete` - `{"paths": [...]}` bulk delete.
+- `GET  /api/system/alerts` - current alert thresholds: `{enabled, cpuPercent,
+  memPercent, diskPercent, tempCelsius, cooldownMinutes}`; a threshold of 0
+  disables that metric.
+- `PUT  /api/system/alerts` - update thresholds (values are clamped into sane
+  ranges server-side; percents round to whole numbers).
+- `POST /api/system/push-token` - register an Expo push token
+  (`ExponentPushToken[...]`) so this phone receives alert notifications.
 
 All paths are **relative to `MOONI_ROOT_DIR`** and sanitized so they can
 never escape that folder (protection against path traversal `../`, absolute
@@ -106,8 +116,8 @@ read without a deadline).
 
 `rename` and `move` refuse to overwrite an existing destination file.
 
-All `/api/files/*` and `/api/system/*` endpoints require the header
-`X-API-Key: <your api key>`.
+All `/api/files/*`, `/api/media/*` and `/api/system/*` endpoints require the
+header `X-API-Key: <your api key>`.
 
 ## Windows WSL
 
@@ -181,6 +191,25 @@ Media screen shows a "not enabled" notice.
   refuses to delete the media root itself.
 
 All media endpoints require `X-API-Key`, exactly like `/api/files/*`.
+
+## Threshold alerts (optional)
+
+A background monitor samples system stats every 30 seconds and pushes an Expo
+notification ("Mooni: CPU at 95% ...") when a configured threshold is crossed:
+
+- **Edge-triggered** - fires once on crossing, not repeatedly while the value
+  stays high. A hysteresis band of 5 must be dropped below before the metric
+  can fire again, and a per-config cooldown (default 30 min, capped at 24 h)
+  applies between notifications for the same metric. Temperature only arms if
+  the machine actually exposes thermal zones.
+- **Configured** via the app's Alert Settings screen → `GET/PUT
+  /api/system/alerts`; the phone registers its push token via
+  `POST /api/system/push-token`.
+- **Delivered** through Expo's push API; tokens reported as
+  `DeviceNotRegistered` are pruned automatically.
+- **State** lives in `~/.mooni/alerts.json` (mode 0600 - push tokens can send
+  a notification to your phone, treat them accordingly). Everything is off by
+  default.
 
 ## Redis caching (optional)
 

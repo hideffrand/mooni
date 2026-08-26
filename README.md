@@ -9,12 +9,16 @@ on your router.
 ## What you get
 
 - **File Manager** - browse folders, upload, download, rename, copy, move,
-  delete, and preview photos & videos right from your phone.
+  delete, and preview photos & videos right from your phone. Files get
+  thumbnails (images/videos) or colored type badges (PDF, XLS, ZIP, ...) at a
+  glance.
 - **Media** - a Photos-style library (timeline grid grouped by date,
   full-screen swipeable viewer with pinch-zoom, multi-select, gallery
   upload) over a dedicated folder on the server.
 - **System Health** - a live dashboard of your server's CPU, memory, disk,
   load, uptime, and temperature.
+- **Alerts** - set CPU/RAM/disk/temperature thresholds per device and get a
+  push notification on your phone when one is crossed.
 - **Power Control** - reboot or shut down your machine from the app, guarded
   by your phone's fingerprint/PIN (with a type-to-confirm fallback) so a
   stray tap - or a leaked API key - can't do damage.
@@ -76,6 +80,7 @@ health.
   top to switch which machine you're looking at.
 - **Files**: list folders, upload/download, rename/copy/move/delete,
   preview images, videos and audio, share files to other apps.
+- **Alerts**: threshold notifications (CPU/RAM/disk/temp) pushed to the app.
 - **Power**: reboot or shut down the selected machine; the app asks you to
   type a random text token before anything happens.
 - **Multiple servers**: keep several servers/devices in the app and switch
