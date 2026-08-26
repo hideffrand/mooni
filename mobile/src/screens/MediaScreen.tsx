@@ -27,7 +27,6 @@ import { MediaFolder, MediaItem } from "../types";
 type Props = NativeStackScreenProps<RootStackParamList, "Media">;
 
 const COLS = 3;
-const ALBUM_SIZE = 92;
 const THUMB_EXT = ["jpg", "jpeg", "png", "gif", "bmp"];
 
 function extOf(name: string): string {
@@ -322,7 +321,7 @@ export default function MediaScreen({ route, navigation }: Props) {
 
   const renderAlbum = ({ item }: { item: MediaFolder }) => (
     <TouchableOpacity
-      style={[styles.albumCell, { width: ALBUM_SIZE }]}
+      style={[styles.albumCell, { width: cellSize }]}
       activeOpacity={0.8}
       onPress={() => openFolder(item)}
     >
@@ -355,9 +354,14 @@ export default function MediaScreen({ route, navigation }: Props) {
     folders.length === 0 ? null : (
       <View>
         <Text style={styles.albumsTitle}>Folders</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumsRow}>
-          {folders.map((f) => renderAlbum({ item: f }))}
-        </ScrollView>
+        {Array.from({ length: Math.ceil(folders.length / COLS) }, (_, r) => {
+          const rowFolders = folders.slice(r * COLS, r * COLS + COLS);
+          return (
+            <View key={rowFolders[0].path} style={styles.albumsRow}>
+              {rowFolders.map((f) => renderAlbum({ item: f }))}
+            </View>
+          );
+        })}
       </View>
     );
 
@@ -526,17 +530,17 @@ function makeStyles(colors: ThemeColors) {
       textTransform: "uppercase",
       letterSpacing: 0.4,
     },
-    albumsRow: { flexDirection: "row", paddingHorizontal: 11, gap: 10, paddingBottom: 6 },
-    albumCell: { alignItems: "center" },
+    albumsRow: { flexDirection: "row", marginBottom: 12 },
+    albumCell: { alignItems: "center", marginHorizontal: 1 },
     albumImage: {
-      width: ALBUM_SIZE,
-      height: ALBUM_SIZE,
+      width: "100%",
+      aspectRatio: 1,
       borderRadius: 10,
       backgroundColor: colors.surface,
     },
     albumPlaceholder: {
-      width: ALBUM_SIZE,
-      height: ALBUM_SIZE,
+      width: "100%",
+      aspectRatio: 1,
       borderRadius: 10,
       backgroundColor: colors.surface,
       alignItems: "center",
@@ -547,7 +551,6 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 13,
       fontWeight: "600",
       marginTop: 5,
-      maxWidth: ALBUM_SIZE,
     },
     albumCount: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
     listContent: { paddingBottom: 96 },

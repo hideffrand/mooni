@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Animated,
+  PanResponder,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,6 +34,69 @@ function MediaPlayer({ source, style }: { source: VideoSource; style: object }) 
   return <VideoView player={player} style={style} nativeControls contentFit="contain" />;
 }
 
+/**
+ * Vertical drag-to-dismiss wrapper (Google Photos style). Only claims the
+ * gesture for a single-finger downward drag — unzoomed horizontal swipes
+ * still reach the pager, and PinchZoomImage keeps priority while zoomed.
+ * Reports drag progress (0..1) so the screen can fade background + bars.
+ */
+function DragDismissView({
+  progress,
+  onDismiss,
+  children,
+}: {
+  progress: Animated.Value;
+  onDismiss: () => void;
+  children: React.ReactNode;
+}) {
+  const { height } = useWindowDimensions();
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const settle = () =>
+    Animated.parallel([
+      Animated.spring(translateY, { toValue: 0, friction: 7, tension: 60, useNativeDriver: false }),
+      Animated.spring(progress, { toValue: 0, friction: 7, tension: 60, useNativeDriver: false }),
+    ]).start();
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_e, g) =>
+        g.numberActiveTouches === 1 && g.dy > 12 && g.dy > Math.abs(g.dx) * 1.5,
+      onPanResponderMove: (_e, g) => {
+        const dy = Math.max(0, g.dy);
+        translateY.setValue(dy);
+        progress.setValue(Math.min(1, dy / (height * 0.4)));
+      },
+      onPanResponderRelease: (_e, g) => {
+        const shouldDismiss = g.dy > height * 0.25 || (g.vy > 0.9 && g.dy > 40);
+        if (shouldDismiss) {
+          Animated.parallel([
+            Animated.timing(translateY, {
+              toValue: height,
+              duration: 180,
+              useNativeDriver: false,
+            }),
+            Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: false }),
+          ]).start(() => onDismiss());
+        } else {
+          settle();
+        }
+      },
+      onPanResponderTerminate: settle,
+    })
+  ).current;
+
+  return (
+    <Animated.View
+      style={{ flex: 1, transform: [{ translateY }] }}
+      {...panResponder.panHandlers}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function MediaViewerScreen({ route, navigation }: Props) {
   const { items, initialIndex } = route.params;
   const { activeDevice } = useDevices();
@@ -41,6 +106,8 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
 
   const [index, setIndex] = useState(initialIndex);
   const [busy, setBusy] = useState(false);
+  // 0..1 while a drag-to-dismiss gesture is in flight; fades bg + overlay.
+  const dragProgress = useRef(new Animated.Value(0)).current;
 
   const item = items[index];
 
@@ -111,16 +178,28 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
           style={styles.video}
         />
       ) : (
-        <PinchZoomImage
-          uri={mediaUrl(activeDevice, "preview", m.path)}
-          headers={{ "X-API-Key": activeDevice.apiKey }}
-        />
+        <DragDismissView progress={dragProgress} onDismiss={() => navigation.goBack()}>
+          <PinchZoomImage
+            uri={mediaUrl(activeDevice, "preview", m.path)}
+            headers={{ "X-API-Key": activeDevice.apiKey }}
+          />
+        </DragDismissView>
       )}
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          backgroundColor: dragProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ["#000000", "rgba(0,0,0,0)"],
+          }),
+        },
+      ]}
+    >
       <FlatList
         data={items}
         renderItem={renderPage}
@@ -135,7 +214,15 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         style={{ width, height }}
       />
 
-      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+      <SafeAreaView
+        style={[
+          styles.overlay,
+          {
+            opacity: dragProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+          },
+        ]}
+        pointerEvents="box-none"
+      >
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -166,7 +253,7 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
           </Text>
         </View>
       </SafeAreaView>
-    </View>
+    </Animated.View>
   );
 }
 
