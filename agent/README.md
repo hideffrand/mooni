@@ -184,6 +184,11 @@ Media screen shows a "not enabled" notice.
   decode - the app falls back to the full preview for it.
 - **Preview** - `GET /api/media/preview?path=...` streams the full file via
   `http.ServeContent` with HTTP Range support (video scrubbing in the app).
+  Add `&tier=large` for images: a cached downscaled JPEG (max 2560px, same
+  disk cache as thumbnails) served with `Cache-Control: private, max-age=86400`
+  - a fraction of the original's bytes. Videos ignore the tier (Range playback
+  needs the original) and any image the thumbnailer can't decode falls back to
+  streaming the original.
 - **Upload** - `POST /api/media/upload` (multipart `file` field, one or more)
   saves files flat into the media directory. `filepath.Base` is applied to
   filenames and every path goes through the same sandbox as the file API.

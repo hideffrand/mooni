@@ -46,6 +46,7 @@ Change the format in one → change the other. App code uses global `btoa`/`atob
 - Every user path is sandboxed to `MOONI_ROOT_DIR` via `internal/fsutil/path.go` `Resolve()` - blocks `..`, absolute paths, AND symlinks pointing outside root (existing-path symlinks are resolved and re-checked). Upload filenames go through `filepath.Base`. Keep this boundary intact; new endpoints must go through `Resolve`.
 - App stores device API keys in `expo-secure-store`, NOT AsyncStorage (`DevicesContext` writes them per-device under `mooni.apikey.<id>`). The AsyncStorage device list is keyless; `DevicesContext` migrates any legacy inline key on load.
 - `/api/files/preview` streams via `http.ServeContent` (HTTP Range support enables video scrubbing) - don't replace with a plain file handler.
+- Media viewer images use `GET /api/media/preview?...&tier=large` (cached 2560px JPEG from the thumbnail cache; falls back to the original on any decode failure). Videos always stream the original. Keep the fallback path intact.
 - Max upload 2 GiB (`MaxUploadBytes`). Backend serves at most `MOONI_ROOT_DIR`; a pairing code contains the API key and must be treated like a password. `install.sh` keeps `~/.mooni/` at 700 and `last-pairing-code.txt` at 600.
 - The app talks **plain HTTP** (`http://...`, no TLS) to LAN/Tailscale IPs. `app.json` sets Android `usesCleartextTraffic: true` via the `expo-build-properties` plugin - don't remove it or pairing/preview breaks.
 

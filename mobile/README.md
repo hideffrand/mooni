@@ -32,8 +32,11 @@ Expo + React Native + TypeScript. Typecheck-clean (`npx tsc --noEmit`).
   strip for drilling into library subfolders, a full-screen viewer you swipe
   through (pinch-to-zoom on images with drag-down-to-dismiss, inline video
   playback with seek), long-press multi-select with bulk download/delete, and
-  gallery upload (multi-pick from the photo picker). Requires the backend to be
-  started with `MOONI_MEDIA_DIR`; otherwise the screen shows a "not enabled" notice.
+  gallery upload (multi-pick from the photo picker). The viewer loads images
+  from the backend's cached 2560px `tier=large` preview instead of multi-MB
+  originals and prefetches the next image while you look at the current one.
+  Requires the backend to be started with `MOONI_MEDIA_DIR`; otherwise the
+  screen shows a "not enabled" notice.
 - **Home dashboard (first screen)**: live system health - CPU, memory, disk,
   load average, uptime, process count, and temperature - auto-refreshing
   every few seconds, with the selected device's name in the header.
