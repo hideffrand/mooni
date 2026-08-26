@@ -214,7 +214,7 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         style={{ width, height }}
       />
 
-      <SafeAreaView
+      <Animated.View
         style={[
           styles.overlay,
           {
@@ -223,6 +223,7 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         ]}
         pointerEvents="box-none"
       >
+        <SafeAreaView style={styles.overlayContent}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -252,7 +253,8 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
             })}
           </Text>
         </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -271,8 +273,8 @@ function makeStyles(colors: ThemeColors) {
       left: 0,
       right: 0,
       bottom: 0,
-      justifyContent: "space-between",
     },
+    overlayContent: { flex: 1, justifyContent: "space-between" },
     topBar: {
       flexDirection: "row",
       alignItems: "center",
