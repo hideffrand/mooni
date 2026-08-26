@@ -1,4 +1,4 @@
-import React, { ComponentProps, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
 import { uploadFile } from "../api/files";
+import { ionIconFor } from "../utils/fileTypes";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ShareUpload">;
 
@@ -36,13 +37,6 @@ function formatBytes(bytes: number | null): string {
     i++;
   }
   return `${val.toFixed(1)} ${units[i]}`;
-}
-
-function fileIcon(name: string): ComponentProps<typeof Ionicons>["name"] {
-  const lower = name.toLowerCase();
-  if (/\.(jpe?g|png|gif|webp|heic|bmp)$/.test(lower)) return "image-outline";
-  if (/\.(mp4|mov|mkv|webm|avi)$/.test(lower)) return "videocam-outline";
-  return "document-outline";
 }
 
 export default function ShareUploadScreen({ navigation }: Props) {
@@ -133,7 +127,7 @@ export default function ShareUploadScreen({ navigation }: Props) {
           {rows.map((row, i) => (
             <View key={`${row.file.path}-${i}`} style={[styles.fileRow, i > 0 && styles.fileRowDivider]}>
               <View style={styles.fileIcon}>
-                <Ionicons name={fileIcon(row.file.fileName ?? "")} size={20} color={colors.primary} />
+                <Ionicons name={ionIconFor(row.file.fileName ?? "")} size={20} color={colors.primary} />
               </View>
               <View style={styles.fileMeta}>
                 <Text style={styles.fileName} numberOfLines={1}>

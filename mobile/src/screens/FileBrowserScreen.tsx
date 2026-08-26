@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import { Image } from "expo-image";
 import * as DocumentPicker from "expo-document-picker";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +17,7 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
-import { createClient, fileUrl } from "../api/client";
+import { createClient } from "../api/client";
 import {
   listFiles,
   mkdir,
@@ -32,6 +31,7 @@ import {
 import { FileEntry } from "../types";
 import PromptModal from "./components/PromptModal";
 import ActionSheet from "./components/ActionSheet";
+import FileTypeIcon from "./components/FileTypeIcon";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FileBrowser">;
 
@@ -47,10 +47,6 @@ interface UploadItem {
   error?: string;
 }
 
-const VIDEO_EXT = ["mp4", "mov", "m4v", "webm", "mkv"];
-// webp: server thumbnailer can't decode it, so those still stream full preview.
-const SERVER_THUMB_EXT = ["jpg", "jpeg", "png", "gif", "bmp"];
-
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB", "TB"];
@@ -65,11 +61,6 @@ function formatSize(bytes: number): string {
 
 function joinPath(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name;
-}
-
-function extOf(name: string): string {
-  const parts = name.split(".");
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
 }
 
 const SORT_OPTIONS: { label: string; field: SortField; dir: SortDir }[] = [
@@ -109,8 +100,6 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   // Multi-select download mode: paths of selected files (folders excluded).
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchStatus, setBatchStatus] = useState<{ done: number; total: number } | null>(null);
-  // Paths whose thumbnail request failed; those cells show a plain icon.
-  const [thumbFailed, setThumbFailed] = useState<Set<string>>(new Set());
 
   const selecting = selected.size > 0;
 
@@ -350,12 +339,15 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
       onPress={() => (selecting && !item.isDir ? toggleSelect(item) : openEntry(item))}
       onLongPress={() => onLongPress(item)}
     >
-      <Ionicons
-        name={item.isDir ? "folder-outline" : "document-outline"}
-        size={22}
-        color={colors.textSecondary}
-        style={styles.icon}
-      />
+      <View style={styles.icon}>
+        <FileTypeIcon
+          name={item.name}
+          path={item.path}
+          isDir={item.isDir}
+          settings={activeDevice ?? undefined}
+          variant="list"
+        />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.name} numberOfLines={1}>
           {item.name}
@@ -379,17 +371,6 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   );
 
   const renderGridItem = ({ item }: { item: FileEntry }) => {
-    const ext = extOf(item.name);
-    const wantsThumb =
-      !item.isDir && activeDevice && SERVER_THUMB_EXT.includes(ext);
-    const isVideoThumb = !item.isDir && VIDEO_EXT.includes(ext) && !thumbFailed.has(item.path);
-    const thumbUri =
-      wantsThumb || isVideoThumb
-        ? fileUrl(activeDevice!, "thumb", item.path)
-        : !item.isDir && ext === "webp"
-          ? fileUrl(activeDevice!, "preview", item.path)
-          : null;
-
     return (
       <TouchableOpacity
         style={[styles.card, selecting && !item.isDir && selected.has(item.path) && styles.cardSelected]}
@@ -409,24 +390,13 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
           <Ionicons name="ellipsis-vertical" size={16} color="#fff" />
         </TouchableOpacity>
         <View style={styles.cardThumb}>
-          {thumbUri ? (
-            <Image
-              source={{ uri: thumbUri, headers: { "X-API-Key": activeDevice?.apiKey ?? "" } }}
-              style={styles.cardImage}
-              contentFit="cover"
-              cachePolicy="disk"
-              recyclingKey={item.path}
-              onError={() =>
-                setThumbFailed((prev) => new Set(prev).add(item.path))
-              }
-            />
-          ) : (
-            <Ionicons
-              name={item.isDir ? "folder" : "document-outline"}
-              size={38}
-              color={colors.textSecondary}
-            />
-          )}
+          <FileTypeIcon
+            name={item.name}
+            path={item.path}
+            isDir={item.isDir}
+            settings={activeDevice ?? undefined}
+            variant="grid"
+          />
         </View>
         <Text style={styles.cardName} numberOfLines={1}>
           {item.name}
@@ -872,7 +842,7 @@ function makeStyles(colors: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
-    icon: { fontSize: 22, marginRight: 12 },
+    icon: { marginRight: 12 },
     name: { color: colors.text, fontSize: 15, fontWeight: "500" },
     meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
     center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
@@ -899,7 +869,6 @@ function makeStyles(colors: ThemeColors) {
       overflow: "hidden",
       marginBottom: 6,
     },
-    cardImage: { width: "100%", height: "100%" },
     cardName: { color: colors.text, fontSize: 12, fontWeight: "500" },
     cardMeta: { color: colors.textSecondary, fontSize: 10, marginTop: 2 },
 
