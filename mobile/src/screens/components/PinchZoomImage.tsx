@@ -1,5 +1,6 @@
-import React, { useRef } from "react";
-import { Animated, PanResponder, StyleSheet, useWindowDimensions, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { ActivityIndicator, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Image } from "expo-image";
 
 const MAX_SCALE = 4;
 const DOUBLE_TAP_MS = 300;
@@ -21,6 +22,8 @@ export default function PinchZoomImage({
   headers?: Record<string, string>;
 }) {
   const { width, height } = useWindowDimensions();
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [attempt, setAttempt] = useState(0);
   const scale = useRef(new Animated.Value(1)).current;
   const tx = useRef(new Animated.Value(0)).current;
   const ty = useRef(new Animated.Value(0)).current;
@@ -114,11 +117,38 @@ export default function PinchZoomImage({
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <Animated.Image
-        source={{ uri, headers }}
+      <Animated.View
         style={[styles.image, { transform: [{ translateX: tx }, { translateY: ty }, { scale }] }]}
-        resizeMode="contain"
-      />
+      >
+        {/* expo-image downsamples large originals; RN Image can silently fail
+            to decode multi-MB photos on Android. */}
+        <Image
+          key={attempt}
+          source={{ uri, headers }}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          cachePolicy="disk"
+          recyclingKey={uri}
+          onLoadStart={() => setStatus("loading")}
+          onLoad={() => setStatus("loaded")}
+          onError={() => setStatus("error")}
+          transition={120}
+        />
+        {status === "loading" && <ActivityIndicator style={StyleSheet.absoluteFill} color="#fff" />}
+        {status === "error" && (
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              setStatus("loading");
+              setAttempt((a) => a + 1);
+            }}
+          >
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>Couldn't load image. Tap to retry.</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
     </View>
   );
 }
@@ -126,4 +156,11 @@ export default function PinchZoomImage({
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center" },
   image: { width: "100%", height: "100%" },
+  errorBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#000",
+  },
+  errorText: { color: "#fff", fontSize: 14, textAlign: "center", paddingHorizontal: 24 },
 });
