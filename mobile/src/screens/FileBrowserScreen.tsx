@@ -27,6 +27,7 @@ import {
   moveItem,
   deleteItem,
   uploadFile,
+  downloadSelected,
 } from "../api/files";
 import { FileEntry } from "../types";
 import PromptModal from "./components/PromptModal";
@@ -105,8 +106,35 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
   const [copyTarget, setCopyTarget] = useState<FileEntry | null>(null);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  // Multi-select download mode: paths of selected files (folders excluded).
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchStatus, setBatchStatus] = useState<{ done: number; total: number } | null>(null);
   // Paths whose thumbnail request failed; those cells show a plain icon.
   const [thumbFailed, setThumbFailed] = useState<Set<string>>(new Set());
+
+  const selecting = selected.size > 0;
+
+  const toggleSelect = (entry: FileEntry) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(entry.path)) {
+        next.delete(entry.path);
+      } else {
+        next.add(entry.path);
+      }
+      return next;
+    });
+  };
+
+  // Long-press: files enter selection mode; folders keep the action menu.
+  const onLongPress = (entry: FileEntry) => {
+    if (entry.isDir) {
+      setMenuTarget(entry);
+      return;
+    }
+    setMenuTarget(null);
+    setSelected(new Set([entry.path]));
+  };
 
   const patchUpload = (id: string, patch: Partial<UploadItem>) =>
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -246,8 +274,6 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
     );
   };
 
-  const onLongPress = (entry: FileEntry) => setMenuTarget(entry);
-
   const pickAction = (kind: "rename" | "copy" | "move" | "delete") => {
     const target = menuTarget;
     setMenuTarget(null);
@@ -263,10 +289,65 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
     }
   };
 
+  const handleDownloadSelected = async () => {
+    if (!activeDevice || selected.size === 0) return;
+    const paths = [...selected];
+    setSelected(new Set());
+    setBatchStatus({ done: 0, total: paths.length });
+    try {
+      const res = await downloadSelected(
+        activeDevice.baseUrl,
+        activeDevice.apiKey,
+        paths,
+        (done, total) => setBatchStatus({ done, total })
+      );
+      let msg = `${res.saved} file${res.saved === 1 ? "" : "s"} saved to Downloads/mooni.`;
+      if (res.fallbacks > 0) {
+        msg += `\n${res.fallbacks} saved inside the app instead (public save failed).`;
+      }
+      if (res.failed > 0) {
+        msg += `\n${res.failed} failed.`;
+      }
+      Alert.alert("Download", msg);
+    } finally {
+      setBatchStatus(null);
+    }
+  };
+
+  const confirmDeleteSelected = () => {
+    const paths = [...selected];
+    Alert.alert(
+      "Delete items?",
+      `${paths.length} item${paths.length > 1 ? "s" : ""} will be permanently deleted.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!client) return;
+            setBusy(true);
+            try {
+              for (const p of paths) {
+                await deleteItem(client, p);
+              }
+              setSelected(new Set());
+              await load();
+            } catch (e: any) {
+              Alert.alert("Failed", e?.response?.data?.error ?? e.message);
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderListItem = ({ item }: { item: FileEntry }) => (
     <TouchableOpacity
-      style={styles.row}
-      onPress={() => openEntry(item)}
+      style={[styles.row, selecting && selected.has(item.path) && styles.rowSelected]}
+      onPress={() => (selecting && !item.isDir ? toggleSelect(item) : openEntry(item))}
       onLongPress={() => onLongPress(item)}
     >
       <Ionicons
@@ -284,6 +365,16 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
           {new Date(item.modTime).toLocaleString()}
         </Text>
       </View>
+      {selecting && !item.isDir && selected.has(item.path) && (
+        <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+      )}
+      <TouchableOpacity
+        style={styles.rowMenuBtn}
+        hitSlop={8}
+        onPress={() => setMenuTarget(item)}
+      >
+        <Ionicons name="ellipsis-vertical" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -301,10 +392,22 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
 
     return (
       <TouchableOpacity
-        style={styles.card}
-        onPress={() => openEntry(item)}
+        style={[styles.card, selecting && !item.isDir && selected.has(item.path) && styles.cardSelected]}
+        onPress={() => (selecting && !item.isDir ? toggleSelect(item) : openEntry(item))}
         onLongPress={() => onLongPress(item)}
       >
+        {selecting && !item.isDir && selected.has(item.path) && (
+          <View style={styles.cardCheck}>
+            <Ionicons name="checkmark-circle" size={24} color="#fff" />
+          </View>
+        )}
+        <TouchableOpacity
+          style={styles.cardMenuBtn}
+          hitSlop={6}
+          onPress={() => setMenuTarget(item)}
+        >
+          <Ionicons name="ellipsis-vertical" size={16} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.cardThumb}>
           {thumbUri ? (
             <Image
@@ -348,6 +451,23 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {selecting && (
+        <View style={styles.selBar}>
+          <Text style={styles.selCount}>{selected.size} selected</Text>
+          <View style={styles.selActions}>
+            <TouchableOpacity
+              onPress={() =>
+                setSelected(new Set(entries.filter((e) => !e.isDir).map((e) => e.path)))
+              }
+            >
+              <Text style={styles.selAction}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity hitSlop={8} onPress={() => setSelected(new Set())}>
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("Home")}>
           <Ionicons name="home-outline" size={18} color={colors.textLighter} />
@@ -379,6 +499,15 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
         <View style={styles.busyBar}>
           <ActivityIndicator color={colors.onPrimary} size="small" />
           <Text style={styles.busyText}>Processing...</Text>
+        </View>
+      )}
+
+      {batchStatus && (
+        <View style={styles.busyBar}>
+          <ActivityIndicator color={colors.onPrimary} size="small" />
+          <Text style={styles.busyText}>
+            Downloading {batchStatus.done}/{batchStatus.total}…
+          </Text>
         </View>
       )}
 
@@ -599,13 +728,35 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => setFabMenuVisible(true)}
-      >
-        <Ionicons name="add" size={28} color={colors.onPrimary} />
-      </TouchableOpacity>
+      {selecting ? (
+        <View style={styles.batchBar}>
+          <TouchableOpacity style={styles.batchBtn} onPress={handleDownloadSelected}>
+            <Ionicons name="download-outline" size={18} color={colors.text} />
+            <Text style={styles.batchBtnText}>Download</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.batchBtn, styles.batchBtnDivider]}
+            onPress={confirmDeleteSelected}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={[styles.batchBtnText, { color: colors.danger }]}>Delete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.batchBtn, styles.batchBtnDivider]}
+            onPress={() => setSelected(new Set())}
+          >
+            <Text style={styles.batchBtnText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.85}
+          onPress={() => setFabMenuVisible(true)}
+        >
+          <Ionicons name="add" size={28} color={colors.onPrimary} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -750,5 +901,62 @@ function makeStyles(colors: ThemeColors) {
     cardImage: { width: "100%", height: "100%" },
     cardName: { color: colors.text, fontSize: 12, fontWeight: "500" },
     cardMeta: { color: colors.textSecondary, fontSize: 10, marginTop: 2 },
+
+    rowSelected: { backgroundColor: colors.surface },
+    rowMenuBtn: { paddingHorizontal: 6, paddingVertical: 10 },
+    cardSelected: { borderWidth: 2, borderColor: colors.primary },
+    cardCheck: {
+      position: "absolute",
+      top: 4,
+      left: 4,
+      zIndex: 2,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      borderRadius: 12,
+    },
+    cardMenuBtn: {
+      position: "absolute",
+      top: 2,
+      right: 2,
+      zIndex: 2,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      borderRadius: 12,
+      padding: 2,
+    },
+
+    selBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: colors.cardAlt,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    selCount: { color: colors.text, fontSize: 15, fontWeight: "700" },
+    selActions: { flexDirection: "row", alignItems: "center", gap: 18 },
+    selAction: { color: colors.primary, fontSize: 15, fontWeight: "600" },
+
+    batchBar: {
+      flexDirection: "row",
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingVertical: 8,
+    },
+    batchBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 8,
+    },
+    batchBtnDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+    batchBtnText: { color: colors.text, fontSize: 14, fontWeight: "600" },
   });
 }

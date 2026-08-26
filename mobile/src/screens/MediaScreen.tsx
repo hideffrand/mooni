@@ -20,13 +20,14 @@ import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
 import { createClient } from "../api/client";
-import { listMedia, mediaUrl, uploadMedia, deleteMedia } from "../api/media";
-import { downloadFile } from "../api/files";
-import { MediaItem } from "../types";
+import { listMedia, listMediaFolders, mediaUrl, uploadMedia, deleteMedia } from "../api/media";
+import { downloadSelected } from "../api/files";
+import { MediaFolder, MediaItem } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Media">;
 
 const COLS = 3;
+const ALBUM_SIZE = 92;
 const THUMB_EXT = ["jpg", "jpeg", "png", "gif", "bmp"];
 
 function extOf(name: string): string {
@@ -64,7 +65,8 @@ function chunkRows(items: MediaItem[]): Row[] {
   return rows;
 }
 
-export default function MediaScreen({ navigation }: Props) {
+export default function MediaScreen({ route, navigation }: Props) {
+  const currentPath = route.params?.path ?? "";
   const { activeDevice } = useDevices();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -72,11 +74,13 @@ export default function MediaScreen({ navigation }: Props) {
   const cellSize = (width - 2) / COLS;
 
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
+  const [dlStatus, setDlStatus] = useState<{ done: number; total: number } | null>(null);
   // Videos whose thumbnail failed (no ffmpeg); cells show the play icon.
   const [videoThumbFailed, setVideoThumbFailed] = useState<Set<string>>(new Set());
 
@@ -86,7 +90,20 @@ export default function MediaScreen({ navigation }: Props) {
     if (!client) return;
     setError(null);
     try {
-      setItems(await listMedia(client));
+      if (currentPath === "") {
+        // Root: flat "All" grid plus a top-level album strip.
+        const [all, browse] = await Promise.all([
+          listMedia(client),
+          listMediaFolders(client, ""),
+        ]);
+        setItems(all);
+        setFolders(browse.folders);
+      } else {
+        // Drilled in: scoped to this folder only.
+        const res = await listMediaFolders(client, currentPath);
+        setItems(res.items);
+        setFolders(res.folders);
+      }
     } catch (e: any) {
       if (e?.response?.status === 404) {
         setError("This server doesn't have the Media library enabled.");
@@ -98,12 +115,18 @@ export default function MediaScreen({ navigation }: Props) {
       setRefreshing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDevice?.baseUrl, activeDevice?.apiKey]);
+  }, [currentPath, activeDevice?.baseUrl, activeDevice?.apiKey]);
 
   useEffect(() => {
     setLoading(true);
     load();
   }, [load]);
+
+  // Show the folder name in the header while drilled in.
+  useEffect(() => {
+    const name = currentPath.split("/").filter(Boolean).pop();
+    navigation.setOptions({ title: name ?? "Media" });
+  }, [currentPath, navigation]);
 
   // Refresh when returning from the viewer (deletes may have happened there).
   useEffect(() => {
@@ -158,7 +181,7 @@ export default function MediaScreen({ navigation }: Props) {
     for (const asset of assets) {
       try {
         if (!activeDevice) return;
-        await uploadMedia(activeDevice.baseUrl, activeDevice.apiKey, asset.uri);
+        await uploadMedia(activeDevice.baseUrl, activeDevice.apiKey, currentPath, asset.uri);
       } catch {
         failed++;
       }
@@ -197,19 +220,28 @@ export default function MediaScreen({ navigation }: Props) {
   };
 
   const handleDownloadSelected = async () => {
-    if (!activeDevice) return;
-    let ok = 0;
-    for (const path of [...selected]) {
-      try {
-        const name = path.split("/").pop() ?? `media-${Date.now()}`;
-        await downloadFile(activeDevice.baseUrl, activeDevice.apiKey, path, name);
-        ok++;
-      } catch {
-        // skip failed files
-      }
-    }
-    Alert.alert("Download", ok > 0 ? `${ok} file${ok > 1 ? "s" : ""} saved to the device.` : "Nothing could be downloaded.");
+    if (!activeDevice || selected.size === 0) return;
+    const paths = [...selected];
     setSelected(new Set());
+    setDlStatus({ done: 0, total: paths.length });
+    try {
+      const res = await downloadSelected(
+        activeDevice.baseUrl,
+        activeDevice.apiKey,
+        paths,
+        (done, total) => setDlStatus({ done, total })
+      );
+      let msg = `${res.saved} file${res.saved === 1 ? "" : "s"} saved to Downloads/mooni.`;
+      if (res.fallbacks > 0) {
+        msg += `\n${res.fallbacks} saved inside the app instead (public save failed).`;
+      }
+      if (res.failed > 0) {
+        msg += `\n${res.failed} failed.`;
+      }
+      Alert.alert("Download", msg);
+    } finally {
+      setDlStatus(null);
+    }
   };
 
   const sections = useMemo<Section[]>(() => {
@@ -283,6 +315,52 @@ export default function MediaScreen({ navigation }: Props) {
     </View>
   );
 
+  const openFolder = (folder: MediaFolder) => {
+    setSelected(new Set());
+    navigation.push("Media", { path: folder.path });
+  };
+
+  const renderAlbum = ({ item }: { item: MediaFolder }) => (
+    <TouchableOpacity
+      style={[styles.albumCell, { width: ALBUM_SIZE }]}
+      activeOpacity={0.8}
+      onPress={() => openFolder(item)}
+    >
+      {item.cover && activeDevice ? (
+        <Image
+          source={{
+            uri: mediaUrl(activeDevice, "thumb", item.cover.path),
+            headers: { "X-API-Key": activeDevice.apiKey },
+          }}
+          style={styles.albumImage}
+          contentFit="cover"
+          cachePolicy="disk"
+          recyclingKey={item.path}
+        />
+      ) : (
+        <View style={styles.albumPlaceholder}>
+          <Ionicons name="folder" size={30} color={colors.textSecondary} />
+        </View>
+      )}
+      <Text style={styles.albumName} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <Text style={styles.albumCount}>
+        {item.count} item{item.count === 1 ? "" : "s"}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const albumStrip = () =>
+    folders.length === 0 ? null : (
+      <View>
+        <Text style={styles.albumsTitle}>Folders</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumsRow}>
+          {folders.map((f) => renderAlbum({ item: f }))}
+        </ScrollView>
+      </View>
+    );
+
   if (!activeDevice || !client) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -319,6 +397,15 @@ export default function MediaScreen({ navigation }: Props) {
         </View>
       )}
 
+      {dlStatus && (
+        <View style={styles.uploadingBar}>
+          <ActivityIndicator color={colors.onPrimary} size="small" />
+          <Text style={styles.uploadingText}>
+            Downloading {dlStatus.done}/{dlStatus.total}…
+          </Text>
+        </View>
+      )}
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
       ) : error ? (
@@ -328,7 +415,7 @@ export default function MediaScreen({ navigation }: Props) {
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && folders.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyScroll}
           refreshControl={
@@ -337,8 +424,14 @@ export default function MediaScreen({ navigation }: Props) {
         >
           <View style={styles.center}>
             <Ionicons name="images-outline" size={52} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>No media yet.</Text>
-            <Text style={styles.emptyHint}>Tap + to add photos and videos from your gallery.</Text>
+            <Text style={styles.emptyText}>
+              {currentPath ? "This folder has no media." : "No media yet."}
+            </Text>
+            {!currentPath && (
+              <Text style={styles.emptyHint}>
+                Tap + to add photos and videos from your gallery.
+              </Text>
+            )}
           </View>
         </ScrollView>
       ) : (
@@ -349,6 +442,7 @@ export default function MediaScreen({ navigation }: Props) {
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
+          ListHeaderComponent={albumStrip()}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -421,6 +515,41 @@ function makeStyles(colors: ThemeColors) {
       textTransform: "uppercase",
       letterSpacing: 0.4,
     },
+
+    albumsTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+      paddingHorizontal: 12,
+      paddingTop: 14,
+      paddingBottom: 8,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    albumsRow: { flexDirection: "row", paddingHorizontal: 11, gap: 10, paddingBottom: 6 },
+    albumCell: { alignItems: "center" },
+    albumImage: {
+      width: ALBUM_SIZE,
+      height: ALBUM_SIZE,
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+    },
+    albumPlaceholder: {
+      width: ALBUM_SIZE,
+      height: ALBUM_SIZE,
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    albumName: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "600",
+      marginTop: 5,
+      maxWidth: ALBUM_SIZE,
+    },
+    albumCount: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
     listContent: { paddingBottom: 96 },
     row: { flexDirection: "row", marginBottom: 2 },
     cell: {

@@ -24,6 +24,10 @@ const (
 // listCacheTTL bounds staleness for out-of-band changes; uploads/deletes invalidate immediately.
 const listCacheTTL = 30 * time.Second
 
+// browseCacheTTL bounds staleness for per-folder browse listings (same
+// invalidation version as the flat list, so mutations bust both).
+const browseCacheTTL = 30 * time.Second
+
 const (
 	listKey = "mooni:media:list"
 	listVer = "mooni:media:list:ver"
@@ -182,4 +186,136 @@ func (s *Service) storeList(ctx context.Context, items []dto.MediaItem) {
 		return
 	}
 	s.cache.Set(ctx, listKey, b, listCacheTTL)
+}
+
+type cachedBrowse struct {
+	Version int64
+	Folders []dto.MediaFolder
+	Items   []dto.MediaItem
+}
+
+func browseKey(userPath string) string {
+	return "mooni:media:browse:" + userPath
+}
+
+func (s *Service) cachedBrowse(ctx context.Context, userPath string) ([]dto.MediaFolder, []dto.MediaItem, bool) {
+	data, ok := s.cache.Get(ctx, browseKey(userPath))
+	if !ok {
+		return nil, nil, false
+	}
+	var cb cachedBrowse
+	if json.Unmarshal(data, &cb) != nil || cb.Version != s.cache.GetInt64(ctx, listVer) {
+		return nil, nil, false
+	}
+	return cb.Folders, cb.Items, true
+}
+
+func (s *Service) storeBrowse(ctx context.Context, userPath string, folders []dto.MediaFolder, items []dto.MediaItem) {
+	b, err := json.Marshal(cachedBrowse{Version: s.cache.GetInt64(ctx, listVer), Folders: folders, Items: items})
+	if err != nil {
+		return
+	}
+	s.cache.Set(ctx, browseKey(userPath), b, browseCacheTTL)
+}
+
+// Browse lists one directory of the library: its subfolders as albums
+// (each with a recursive media count and newest-item cover) plus the media
+// files directly inside it. Unlike List, it is not recursive for items.
+func (s *Service) Browse(ctx context.Context, userPath string) ([]dto.MediaFolder, []dto.MediaItem, error) {
+	if folders, items, ok := s.cachedBrowse(ctx, userPath); ok {
+		return folders, items, nil
+	}
+	dir, err := s.resolve(userPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var folders []dto.MediaFolder
+	var items []dto.MediaItem
+	for _, it := range entries {
+		name := it.Name()
+		if strings.HasPrefix(name, ".") {
+			continue // hidden entries are not part of the library
+		}
+		abs := filepath.Join(dir, name)
+		if it.IsDir() {
+			folder := dto.MediaFolder{Name: name, Path: fsutil.ToRelative(s.Root, abs)}
+			folder.Count, folder.Cover = s.scanFolder(abs)
+			folders = append(folders, folder)
+			continue
+		}
+		ext := filepath.Ext(name)
+		var kind string
+		if thumbs.IsImageExt(ext) {
+			kind = KindImage
+		} else if thumbs.IsVideoExt(ext) {
+			kind = KindVideo
+		} else {
+			continue
+		}
+		info, err := it.Info()
+		if err != nil {
+			continue // skip unreadable entries (broken symlinks etc.)
+		}
+		items = append(items, dto.MediaItem{
+			Path:    fsutil.ToRelative(s.Root, abs),
+			Name:    name,
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+			Kind:    kind,
+		})
+	}
+
+	sort.Slice(folders, func(i, j int) bool { return folders[i].Name < folders[j].Name })
+	sort.Slice(items, func(i, j int) bool { return items[i].ModTime.After(items[j].ModTime) })
+	s.storeBrowse(ctx, userPath, folders, items)
+	return folders, items, nil
+}
+
+// scanFolder counts media files under dir recursively and returns the newest
+// one as the album cover.
+func (s *Service) scanFolder(dir string) (int, *dto.MediaItem) {
+	count := 0
+	var best *dto.MediaItem
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip unreadable entries
+		}
+		if d.IsDir() {
+			if path != dir && strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		var kind string
+		if thumbs.IsImageExt(ext) {
+			kind = KindImage
+		} else if thumbs.IsVideoExt(ext) {
+			kind = KindVideo
+		} else {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		count++
+		mi := &dto.MediaItem{
+			Path:    fsutil.ToRelative(s.Root, path),
+			Name:    d.Name(),
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+			Kind:    kind,
+		}
+		if best == nil || mi.ModTime.After(best.ModTime) {
+			best = mi
+		}
+		return nil
+	})
+	return count, best
 }

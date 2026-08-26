@@ -11,6 +11,16 @@ type MediaItem struct {
 	Kind    string    `json:"kind"` // "image" | "video"
 }
 
+// MediaFolder is a subdirectory of the library ("album") returned by
+// browse-mode listings. Cover is the newest media file inside (nil when the
+// folder holds none); Count is recursive across nested subfolders.
+type MediaFolder struct {
+	Name  string     `json:"name"`
+	Path  string     `json:"path"` // root-relative, forward-slashed
+	Count int        `json:"count"`
+	Cover *MediaItem `json:"cover,omitempty"`
+}
+
 // MediaDeleteRequest is the body for deleting one or more library entries.
 type MediaDeleteRequest struct {
 	Paths []string `json:"paths"`

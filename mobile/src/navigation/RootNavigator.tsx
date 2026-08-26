@@ -33,7 +33,7 @@ export type RootStackParamList = {
   AlertSettings: undefined;
   Legal: undefined;
   ShareUpload: undefined;
-  Media: undefined;
+  Media: { path?: string } | undefined;
   MediaViewer: { items: MediaItem[]; initialIndex: number };
 };
 

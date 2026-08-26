@@ -6,6 +6,9 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -144,5 +147,132 @@ func TestDeleteRefusesRoot(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("root was deleted: %v", err)
+	}
+}
+
+func TestBrowseScopesToFolderAndFindsCovers(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewService(dir, newFake(), thumbs.New(t.TempDir()))
+	ctx := context.Background()
+
+	writeJPEG(t, filepath.Join(dir, "a.jpg"), 100, 100)
+	writeJPEG(t, filepath.Join(dir, "sub", "d.png"), 50, 50)
+	writeJPEG(t, filepath.Join(dir, "sub", "nested", "c.jpg"), 40, 40)
+	if err := os.WriteFile(filepath.Join(dir, "sub", "note.txt"), []byte("nope"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Deterministic cover: c.jpg is the newest file anywhere under sub/.
+	newest := time.Now().Add(-1 * time.Minute)
+	os.Chtimes(filepath.Join(dir, "sub", "nested", "c.jpg"), newest, newest)
+	mid := time.Now().Add(-1 * time.Hour)
+	os.Chtimes(filepath.Join(dir, "sub", "d.png"), mid, mid)
+	old := time.Now().Add(-24 * time.Hour)
+	os.Chtimes(filepath.Join(dir, "a.jpg"), old, old)
+
+	folders, items, err := svc.Browse(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].Name != "a.jpg" {
+		t.Fatalf("expected only a.jpg at root, got %+v", items)
+	}
+	if len(folders) != 2 || folders[0].Name != "empty" || folders[1].Name != "sub" {
+		t.Fatalf("expected folders [empty sub], got %+v", folders)
+	}
+	sub := folders[1]
+	if sub.Count != 2 {
+		t.Fatalf("expected recursive count 2 for sub, got %d", sub.Count)
+	}
+	if sub.Cover == nil || sub.Cover.Name != "c.jpg" {
+		t.Fatalf("expected newest item c.jpg as cover, got %+v", sub.Cover)
+	}
+	if folders[0].Count != 0 || folders[0].Cover != nil {
+		t.Fatalf("expected empty folder with no cover, got %+v", folders[0])
+	}
+
+	// Drilling in is scoped: no root files leak through.
+	folders, items, err = svc.Browse(ctx, "sub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(folders) != 1 || folders[0].Name != "nested" {
+		t.Fatalf("expected nested folder inside sub, got %+v", folders)
+	}
+	if len(items) != 1 || items[0].Name != "d.png" {
+		t.Fatalf("expected only d.png directly in sub, got %+v", items)
+	}
+
+	// Outside-root paths are refused.
+	if _, _, err := svc.Browse(ctx, "../../etc"); err == nil {
+		t.Fatal("expected error for path outside root")
+	}
+}
+
+func postUpload(t *testing.T, h *Handler, mux *http.ServeMux, destDir, filename string) *httptest.ResponseRecorder {
+	t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, err := mw.CreateFormFile("file", filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img := image.NewRGBA(image.Rect(0, 0, 10, 10))
+	if err := jpeg.Encode(fw, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := mw.WriteField("path", destDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("POST", "/api/media/upload", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestUploadIntoSubfolderAndTraversalNeutralized(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewService(dir, newFake(), thumbs.New(t.TempDir()))
+	h := NewHandler(svc, 1<<20)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	// Upload targets an existing folder (missing parents are not created).
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if rec := postUpload(t, h, mux, "sub", "up.jpg"); rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sub", "up.jpg")); err != nil {
+		t.Fatalf("upload did not land in the requested subfolder: %v", err)
+	}
+
+	// A traversal attempt must stay inside the library (cleaned to a normal
+	// subfolder), never write outside it.
+	if err := os.MkdirAll(filepath.Join(dir, "escaped"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if rec := postUpload(t, h, mux, "../escaped", "up2.jpg"); rec.Code != http.StatusOK {
+		t.Fatalf("expected neutralized upload to succeed, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "escaped", "up2.jpg")); err != nil {
+		t.Fatalf("traversal payload was not contained in root: %v", err)
+	}
+
+	// Uploads must invalidate browse cache: Browse now sees the new file.
+	ctx := context.Background()
+	_, items, err := svc.Browse(ctx, "sub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].Name != "up.jpg" {
+		t.Fatalf("expected up.jpg after invalidation, got %+v", items)
 	}
 }

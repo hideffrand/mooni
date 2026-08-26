@@ -1,5 +1,6 @@
 import { AxiosInstance } from "axios";
 import * as FileSystem from "expo-file-system/legacy";
+import ReactNativeBlobUtil from "react-native-blob-util";
 import { ListResponse } from "../types";
 
 export async function listFiles(
@@ -55,9 +56,10 @@ export function createFileUpload(
   apiKey: string,
   destDir: string,
   localUri: string,
-  onProgress?: UploadProgressCallback
+  onProgress?: UploadProgressCallback,
+  endpoint = "/api/files/upload"
 ) {
-  const url = `${baseUrl}/api/files/upload`;
+  const url = `${baseUrl}${endpoint}`;
   const task = FileSystem.createUploadTask(
     url,
     localUri,
@@ -96,8 +98,58 @@ export async function uploadFile(
   await uploadAsync();
 }
 
+export type DownloadProgressCallback = (bytesWritten: number, totalBytes: number) => void;
+
 /** Downloads a remote file and returns the local URI. */
 export async function downloadFile(
+  baseUrl: string,
+  apiKey: string,
+  remotePath: string,
+  fileName: string,
+  onProgress?: DownloadProgressCallback
+): Promise<string> {
+  const url = `${baseUrl}/api/files/download?path=${encodeURIComponent(
+    remotePath
+  )}`;
+  const localUri = `${FileSystem.documentDirectory}${fileName}`;
+  // createDownloadResumable (not downloadAsync) is what exposes progress.
+  const resumable = FileSystem.createDownloadResumable(
+    url,
+    localUri,
+    { headers: { "X-API-Key": apiKey } },
+    onProgress
+      ? (data) =>
+          onProgress(data.totalBytesWritten, data.totalBytesExpectedToWrite)
+      : undefined
+  );
+  const result = await resumable.downloadAsync();
+  if (!result || result.status < 200 || result.status >= 300) {
+    throw new Error(`Download failed (${result?.status})`);
+  }
+  return result.uri;
+}
+
+function splitExt(name: string): [string, string] {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, ""];
+}
+
+/** Picks `name.ext`, then `name (2).ext`, ... — first name not taken on disk. */
+async function uniqueDownloadPath(dir: string, fileName: string): Promise<string> {
+  const [base, ext] = splitExt(fileName);
+  let candidate = `${dir}/${fileName}`;
+  for (let n = 2; await ReactNativeBlobUtil.fs.exists(candidate); n++) {
+    candidate = `${dir}/${base} (${n})${ext}`;
+  }
+  return candidate;
+}
+
+/**
+ * Streams a file into the public Downloads/mooni folder via the Android
+ * DownloadManager (notification + system-progress included). Needs the
+ * react-native-blob-util native module, so it only works in dev/eas builds.
+ */
+export async function downloadToDownloads(
   baseUrl: string,
   apiKey: string,
   remotePath: string,
@@ -106,12 +158,63 @@ export async function downloadFile(
   const url = `${baseUrl}/api/files/download?path=${encodeURIComponent(
     remotePath
   )}`;
-  const localUri = `${FileSystem.documentDirectory}${fileName}`;
-  const result = await FileSystem.downloadAsync(url, localUri, {
-    headers: { "X-API-Key": apiKey },
-  });
-  if (result.status < 200 || result.status >= 300) {
-    throw new Error(`Download failed (${result.status})`);
+  const dir = `${ReactNativeBlobUtil.fs.dirs.DownloadDir}/mooni`;
+  await ReactNativeBlobUtil.fs.mkdir(dir).catch(() => {}); // usually "already exists"
+  const dest = await uniqueDownloadPath(dir, fileName);
+  const res = await ReactNativeBlobUtil.config({
+    fileCache: false,
+    addAndroidDownloads: {
+      useDownloadManager: true,
+      notification: true,
+      title: fileName,
+      description: "Downloading via Mooni",
+      mime: "application/octet-stream",
+      path: dest,
+      mediaScannable: true,
+    },
+  }).fetch("GET", url, { "X-API-Key": apiKey });
+  const status = res.info().status;
+  if (status < 200 || status >= 300) {
+    throw new Error(`Download failed (${status})`);
   }
-  return result.uri;
+  return dest;
+}
+
+export interface BatchDownloadResult {
+  saved: number;
+  failed: number;
+  /** Files that landed in app storage because the Downloads save failed. */
+  fallbacks: number;
+}
+
+/**
+ * Sequential batch download into Downloads/mooni with per-file fallback to
+ * app storage. onEach reports progress as (done, total).
+ */
+export async function downloadSelected(
+  baseUrl: string,
+  apiKey: string,
+  paths: string[],
+  onEach?: (done: number, total: number) => void
+): Promise<BatchDownloadResult> {
+  let saved = 0;
+  let failed = 0;
+  let fallbacks = 0;
+  for (let i = 0; i < paths.length; i++) {
+    const name = paths[i].split("/").pop() ?? `file-${i}`;
+    try {
+      await downloadToDownloads(baseUrl, apiKey, paths[i], name);
+      saved++;
+    } catch {
+      try {
+        await downloadFile(baseUrl, apiKey, paths[i], name);
+        saved++;
+        fallbacks++;
+      } catch {
+        failed++;
+      }
+    }
+    onEach?.(i + 1, paths.length);
+  }
+  return { saved, failed, fallbacks };
 }

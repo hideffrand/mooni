@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -30,6 +29,18 @@ function extOf(name: string): string {
   return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let val = bytes / 1024;
+  let i = 0;
+  while (val >= 1024 && i < units.length - 1) {
+    val /= 1024;
+    i++;
+  }
+  return `${val.toFixed(1)} ${units[i]}`;
+}
+
 function MediaPlayer({
   source,
   style,
@@ -52,16 +63,19 @@ export default function FilePreviewScreen({ route }: Props) {
   const previewUri = activeDevice ? fileUrl(activeDevice, "preview", path) : "";
 
   const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState<{ written: number; total: number } | null>(null);
 
   const handleDownloadAndShare = async () => {
     setDownloading(true);
+    setProgress(null);
     try {
       if (!activeDevice) return;
       const localUri = await downloadFile(
         activeDevice.baseUrl,
         activeDevice.apiKey,
         path,
-        name
+        name,
+        (written, total) => setProgress({ written, total })
       );
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -123,9 +137,30 @@ export default function FilePreviewScreen({ route }: Props) {
         style={styles.downloadBtn}
         onPress={handleDownloadAndShare}
         disabled={downloading}
+        activeOpacity={0.85}
       >
         {downloading ? (
-          <ActivityIndicator color={colors.onPrimary} />
+          <View style={styles.progressRow}>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: progress && progress.total > 0
+                      ? `${Math.min(100, (progress.written / progress.total) * 100)}%`
+                      : "0%",
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText} numberOfLines={1}>
+              {progress
+                ? progress.total > 0
+                  ? `${formatSize(progress.written)} / ${formatSize(progress.total)}`
+                  : formatSize(progress.written)
+                : "Starting…"}
+            </Text>
+          </View>
         ) : (
           <View style={styles.btnRow}>
             <Ionicons name="arrow-down-outline" size={16} color={colors.onPrimary} />
@@ -157,5 +192,31 @@ function makeStyles(colors: ThemeColors) {
       alignItems: "center",
     },
     downloadBtnText: { color: colors.onPrimary, fontWeight: "700", fontSize: 15 },
+    progressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      width: "100%",
+      paddingHorizontal: 4,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: "rgba(255,255,255,0.35)",
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: 3,
+      backgroundColor: colors.onPrimary,
+    },
+    progressText: {
+      color: colors.onPrimary,
+      fontWeight: "600",
+      fontSize: 12,
+      minWidth: 90,
+      textAlign: "right",
+    },
   });
 }

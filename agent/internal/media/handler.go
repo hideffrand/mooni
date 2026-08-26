@@ -67,6 +67,16 @@ func writeErr(w http.ResponseWriter, status int, err error) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("mode") == "browse" {
+		path := r.URL.Query().Get("path")
+		folders, items, err := h.svc.Browse(r.Context(), path)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"path": path, "folders": folders, "items": items})
+		return
+	}
 	items, err := h.svc.List(r.Context())
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err)
@@ -112,6 +122,8 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
+	destDir := r.FormValue("path") // folder to upload into
+
 	fileHeaders := r.MultipartForm.File["file"]
 	if len(fileHeaders) == 0 {
 		writeErr(w, http.StatusBadRequest, errors.New("missing 'file' field"))
@@ -120,7 +132,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 
 	saved := make([]string, 0, len(fileHeaders))
 	for _, fh := range fileHeaders {
-		if err := h.saveUpload(fh); err != nil {
+		if err := h.saveUpload(destDir, fh); err != nil {
 			writeErr(w, http.StatusBadRequest, err)
 			return
 		}
@@ -130,9 +142,11 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"uploaded": saved})
 }
 
-func (h *Handler) saveUpload(fh *multipart.FileHeader) error {
-	safeName := filepath.Base(fh.Filename) // prevent path traversal via filename
-	dst, err := fsutil.Resolve(h.svc.Root, safeName)
+func (h *Handler) saveUpload(destDir string, fh *multipart.FileHeader) error {
+	// Only the bare filename survives from the client; destDir is resolved
+	// through fsutil so ".." or absolute paths can't escape the library.
+	safeName := filepath.Base(fh.Filename)
+	dst, err := fsutil.Resolve(h.svc.Root, filepath.Join(destDir, safeName))
 	if err != nil {
 		return err
 	}

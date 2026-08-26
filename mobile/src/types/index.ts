@@ -25,6 +25,21 @@ export interface MediaListResponse {
   items: MediaItem[];
 }
 
+/** A subfolder ("album") of the media library. Cover is the newest media file inside. */
+export interface MediaFolder {
+  name: string;
+  path: string; // root-relative, forward-slashed
+  count: number; // media files inside, recursive
+  cover?: MediaItem;
+}
+
+/** Response of GET /api/media/list?mode=browse&path=... */
+export interface MediaBrowseResponse {
+  path: string;
+  folders: MediaFolder[];
+  items: MediaItem[];
+}
+
 export interface ServerSettings {
   baseUrl: string; // e.g. http://100.x.x.x:8080  (your Tailscale IP)
   apiKey: string;
