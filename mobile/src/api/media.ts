@@ -26,9 +26,11 @@ export async function listMediaFolders(
 export function mediaUrl(
   settings: ServerSettings,
   endpoint: "thumb" | "preview",
-  path: string
+  path: string,
+  tier?: "large"
 ): string {
   const params = new URLSearchParams({ path });
+  if (tier) params.set("tier", tier);
   return `${settings.baseUrl}/api/media/${endpoint}?${params.toString()}`;
 }
 

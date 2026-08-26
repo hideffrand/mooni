@@ -97,12 +97,29 @@ func (h *Handler) thumb(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// previewMaxDim is the longest edge of the cached "large" preview tier -
+// big enough for any phone screen, a fraction of the original's bytes.
+const previewMaxDim = 2560
+
 func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	entry, abs, err := h.svc.Stat(path)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err)
 		return
+	}
+	// tier=large serves a cached downscaled image (videos keep the original
+	// so Range scrubbing works). Any failure - webp, undecodable formats -
+	// falls through to streaming the original below.
+	if r.URL.Query().Get("tier") == "large" && !thumbs.IsVideoExt(filepath.Ext(entry.Name)) {
+		if cachePath, modTime, terr := h.svc.ThumbFile(path, previewMaxDim); terr == nil {
+			// Committed to the tier once generation succeeds - a mid-stream
+			// error here is a client disconnect, nothing to fall back to.
+			if serr := thumbs.Serve(w, r, cachePath, modTime); serr != nil {
+				log.Println("media preview tier serve:", serr)
+			}
+			return
+		}
 	}
 	f, err := os.Open(abs)
 	if err != nil {

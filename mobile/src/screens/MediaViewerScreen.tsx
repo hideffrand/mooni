@@ -16,6 +16,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { VideoView, useVideoPlayer, VideoSource } from "expo-video";
 import * as Sharing from "expo-sharing";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
@@ -180,13 +181,24 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
       ) : (
         <DragDismissView progress={dragProgress} onDismiss={() => navigation.goBack()}>
           <PinchZoomImage
-            uri={mediaUrl(activeDevice, "preview", m.path)}
+            uri={mediaUrl(activeDevice, "preview", m.path, "large")}
             headers={{ "X-API-Key": activeDevice.apiKey }}
           />
         </DragDismissView>
       )}
     </View>
   );
+
+  // Warm expo-image's disk cache for the next image so swiping feels instant.
+  // (Image.prefetch can't send our X-API-Key header, so download invisibly.)
+  const next = items[index + 1];
+  const prefetchSource =
+    activeDevice && next && next.kind === "image"
+      ? {
+          uri: mediaUrl(activeDevice, "preview", next.path, "large"),
+          headers: { "X-API-Key": activeDevice.apiKey },
+        }
+      : null;
 
   return (
     <Animated.View
@@ -255,6 +267,14 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         </View>
         </SafeAreaView>
       </Animated.View>
+
+      {prefetchSource && (
+        <Image
+          source={prefetchSource}
+          style={{ width: 0, height: 0 }}
+          cachePolicy="disk"
+        />
+      )}
     </Animated.View>
   );
 }
