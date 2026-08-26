@@ -453,17 +453,38 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       {selecting && (
         <View style={styles.selBar}>
-          <Text style={styles.selCount}>{selected.size} selected</Text>
-          <View style={styles.selActions}>
-            <TouchableOpacity
-              onPress={() =>
-                setSelected(new Set(entries.filter((e) => !e.isDir).map((e) => e.path)))
-              }
-            >
-              <Text style={styles.selAction}>All</Text>
+          <View style={styles.selHeader}>
+            <Text style={styles.selCount}>{selected.size} selected</Text>
+            <View style={styles.selActions}>
+              <TouchableOpacity
+                onPress={() =>
+                  setSelected(new Set(entries.filter((e) => !e.isDir).map((e) => e.path)))
+                }
+              >
+                <Text style={styles.selAction}>All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity hitSlop={8} onPress={() => setSelected(new Set())}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.batchBar}>
+            <TouchableOpacity style={styles.batchBtn} onPress={handleDownloadSelected}>
+              <Ionicons name="download-outline" size={18} color={colors.text} />
+              <Text style={styles.batchBtnText}>Download</Text>
             </TouchableOpacity>
-            <TouchableOpacity hitSlop={8} onPress={() => setSelected(new Set())}>
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            <TouchableOpacity
+              style={[styles.batchBtn, styles.batchBtnDivider]}
+              onPress={confirmDeleteSelected}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              <Text style={[styles.batchBtnText, { color: colors.danger }]}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.batchBtn, styles.batchBtnDivider]}
+              onPress={() => setSelected(new Set())}
+            >
+              <Text style={styles.batchBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -728,27 +749,7 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      {selecting ? (
-        <View style={styles.batchBar}>
-          <TouchableOpacity style={styles.batchBtn} onPress={handleDownloadSelected}>
-            <Ionicons name="download-outline" size={18} color={colors.text} />
-            <Text style={styles.batchBtnText}>Download</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.batchBtn, styles.batchBtnDivider]}
-            onPress={confirmDeleteSelected}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            <Text style={[styles.batchBtnText, { color: colors.danger }]}>Delete</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.batchBtn, styles.batchBtnDivider]}
-            onPress={() => setSelected(new Set())}
-          >
-            <Text style={styles.batchBtnText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
+      {selecting ? null : (
         <TouchableOpacity
           style={styles.fab}
           activeOpacity={0.85}
@@ -924,14 +925,17 @@ function makeStyles(colors: ThemeColors) {
     },
 
     selBar: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
       paddingHorizontal: 16,
-      paddingVertical: 10,
+      paddingTop: 10,
+      paddingBottom: 6,
       backgroundColor: colors.cardAlt,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    selHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
     selCount: { color: colors.text, fontSize: 15, fontWeight: "700" },
     selActions: { flexDirection: "row", alignItems: "center", gap: 18 },
@@ -939,14 +943,10 @@ function makeStyles(colors: ThemeColors) {
 
     batchBar: {
       flexDirection: "row",
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.card,
+      marginTop: 8,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      paddingVertical: 8,
+      paddingVertical: 4,
     },
     batchBtn: {
       flex: 1,
