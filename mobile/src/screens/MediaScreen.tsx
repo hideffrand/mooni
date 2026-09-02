@@ -22,17 +22,12 @@ import { ThemeColors } from "../context/ThemeContext";
 import { createClient } from "../api/client";
 import { listMedia, listMediaFolders, mediaUrl, uploadMedia, deleteMedia } from "../api/media";
 import { downloadSelected } from "../api/files";
+import { extOf } from "../utils/fileTypes";
 import { MediaFolder, MediaItem } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Media">;
 
 const COLS = 3;
-const THUMB_EXT = ["jpg", "jpeg", "png", "gif", "bmp"];
-
-function extOf(name: string): string {
-  const parts = name.split(".");
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
-}
 
 function dayStart(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -334,7 +329,7 @@ export default function MediaScreen({ route, navigation }: Props) {
           }}
           style={styles.albumImage}
           contentFit="cover"
-          cachePolicy="disk"
+          cachePolicy="memory-disk"
           recyclingKey={item.path}
         />
       ) : (

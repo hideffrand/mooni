@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -25,19 +25,52 @@ import { createClient } from "../api/client";
 import { mediaUrl, deleteMedia } from "../api/media";
 import { downloadFile } from "../api/files";
 import PinchZoomImage from "./components/PinchZoomImage";
+import { extOf } from "../utils/fileTypes";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MediaViewer">;
 
-function extOf(name: string): string {
-  const parts = name.split(".");
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
-}
-
-function MediaPlayer({ source, style }: { source: VideoSource; style: object }) {
+/**
+ * Video page with a poster frame: the grid's cached thumbnail sits on top of
+ * the player until the first frame is ready, so opening a video shows the
+ * thumbnail instead of a black rectangle while the stream buffers.
+ */
+function MediaPlayer({
+  source,
+  posterUri,
+  posterHeaders,
+  style,
+}: {
+  source: VideoSource;
+  posterUri?: string;
+  posterHeaders?: Record<string, string>;
+  style: object;
+}) {
   const player = useVideoPlayer(source, (player) => {
     player.loop = false;
   });
-  return <VideoView player={player} style={style} nativeControls contentFit="contain" />;
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const sub = player.addListener("statusChange", ({ status }) => {
+      // readyToPlay means the first frame is decoded and renderable.
+      if (status === "readyToPlay") setReady(true);
+    });
+    return () => sub.remove();
+  }, [player]);
+  return (
+    <View style={style}>
+      <VideoView player={player} style={StyleSheet.absoluteFill} nativeControls contentFit="contain" />
+      {!ready && posterUri ? (
+        <Image
+          source={{ uri: posterUri, headers: posterHeaders }}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          cachePolicy="disk"
+          transition={0}
+          pointerEvents="none"
+        />
+      ) : null}
+    </View>
+  );
 }
 
 /**
@@ -181,6 +214,12 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
             uri: mediaUrl(activeDevice, "preview", m.path),
             headers: { "X-API-Key": activeDevice.apiKey },
           }}
+          posterUri={
+            // Videos always have a server-side ffmpeg thumb (the grid relies
+            // on it); only webp images need no poster - keep it simple.
+            mediaUrl(activeDevice, "thumb", m.path)
+          }
+          posterHeaders={{ "X-API-Key": activeDevice.apiKey }}
           style={styles.video}
         />
       ) : (
