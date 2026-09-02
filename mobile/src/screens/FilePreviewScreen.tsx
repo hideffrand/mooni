@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { VideoView, useVideoPlayer, VideoSource } from "expo-video";
 import * as Sharing from "expo-sharing";
@@ -94,14 +94,32 @@ export default function FilePreviewScreen({ route }: Props) {
     <View style={styles.container}>
       <View style={styles.previewArea}>
         {IMAGE_EXT.includes(ext) ? (
-          <Image
-            source={{
-              uri: previewUri,
-              headers: { "X-API-Key": activeDevice?.apiKey ?? "" },
-            }}
-            style={styles.image}
-            resizeMode="contain"
-          />
+          <View style={StyleSheet.absoluteFill}>
+            {/* 256px server thumb first (same endpoint the thumbnailer
+                caches); the full original streams in on top of it. */}
+            <Image
+              source={{
+                uri: activeDevice ? fileUrl(activeDevice, "thumb", path) : "",
+                headers: { "X-API-Key": activeDevice?.apiKey ?? "" },
+              }}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              cachePolicy="disk"
+              transition={0}
+            />
+            {/* expo-image downsamples large originals; RN Image can silently
+                fail to decode multi-MB photos on Android. */}
+            <Image
+              source={{
+                uri: previewUri,
+                headers: { "X-API-Key": activeDevice?.apiKey ?? "" },
+              }}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              cachePolicy="disk"
+              transition={120}
+            />
+          </View>
         ) : VIDEO_EXT.includes(ext) ? (
           <MediaPlayer
             source={{
@@ -176,7 +194,6 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     previewArea: { flex: 1, alignItems: "center", justifyContent: "center" },
-    image: { width: "100%", height: "100%" },
     video: { width: "100%", height: 300 },
     audioPlayer: { width: 240, height: 48, marginBottom: 12 },
     center: { alignItems: "center", padding: 24 },
