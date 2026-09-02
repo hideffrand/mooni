@@ -201,16 +201,17 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
     </View>
   );
 
-  // Warm expo-image's disk cache for the next image so swiping feels instant.
-  // (Image.prefetch can't send our X-API-Key header, so download invisibly.)
+  // Warm expo-image's disk cache for both neighbours so swiping feels
+  // instant in either direction. (Image.prefetch can't send our X-API-Key
+  // header, so download invisibly instead.)
+  const prev = items[index - 1];
   const next = items[index + 1];
-  const prefetchSource =
-    activeDevice && next && next.kind === "image"
-      ? {
-          uri: mediaUrl(activeDevice, "preview", next.path, "large"),
-          headers: { "X-API-Key": activeDevice.apiKey },
-        }
-      : null;
+  const prefetchSources = (activeDevice ? [prev, next] : []).filter(
+    (m): m is NonNullable<typeof m> => !!m && m.kind === "image"
+  ).map((m) => ({
+    uri: mediaUrl(activeDevice!, "preview", m.path, "large"),
+    headers: { "X-API-Key": activeDevice!.apiKey },
+  }));
 
   return (
     <Animated.View
@@ -238,10 +239,11 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         // Defaults mount ~10 pages, each video page spinning up a player.
         // Mount only the opened page and keep one neighbour rendered on
         // either side; the thumb placeholder covers the swap-in anyway.
+        // (No removeClippedSubviews: it unmounts transformed children
+        // during the drag-dismiss gesture on Android.)
         initialNumToRender={1}
         windowSize={3}
         maxToRenderPerBatch={1}
-        removeClippedSubviews
         style={{ width, height }}
       />
 
@@ -287,13 +289,9 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         </SafeAreaView>
       </Animated.View>
 
-      {prefetchSource && (
-        <Image
-          source={prefetchSource}
-          style={{ width: 0, height: 0 }}
-          cachePolicy="disk"
-        />
-      )}
+      {prefetchSources.map((src) => (
+        <Image key={src.uri} source={src} style={{ width: 0, height: 0 }} cachePolicy="disk" />
+      ))}
     </Animated.View>
   );
 }

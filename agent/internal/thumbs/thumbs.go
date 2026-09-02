@@ -34,12 +34,14 @@ var videoExt = map[string]bool{
 
 func IsImageExt(ext string) bool { return imageExt[strings.ToLower(ext)] }
 func IsVideoExt(ext string) bool { return videoExt[strings.ToLower(ext)] }
+func IsWebpExt(ext string) bool  { return strings.ToLower(ext) == ".webp" }
 
 // maxConcurrentGen caps parallel generations so grids don't stampede the CPU.
 const maxConcurrentGen = 4
 
-// warmQueueSize bounds the background warm queue; overflow is dropped since
-// on-demand requests generate on demand anyway.
+// warmQueueSize bounds the background warm queue. WarmIfMissing drops jobs
+// beyond it (the on-demand path generates when asked); WarmWait blocks
+// instead, so full-library passes can never silently skip files.
 const warmQueueSize = 512
 
 type warmJob struct {
@@ -92,7 +94,8 @@ func (g *Generator) HasCached(abs string, info os.FileInfo, maxDim int) bool {
 }
 
 // WarmIfMissing schedules background generation of abs's thumbnail when it
-// isn't cached yet. Never blocks and never generates inline.
+// isn't cached yet. Never blocks and never generates inline. Jobs past the
+// queue bound are dropped; use WarmWait when completeness matters.
 func (g *Generator) WarmIfMissing(abs string, info os.FileInfo, maxDim int) {
 	if g.HasCached(abs, info, maxDim) {
 		return
@@ -101,6 +104,17 @@ func (g *Generator) WarmIfMissing(abs string, info os.FileInfo, maxDim int) {
 	case g.warm <- warmJob{abs: abs, info: info, maxDim: maxDim}:
 	default: // queue full: the on-demand path will generate when asked
 	}
+}
+
+// WarmWait schedules generation like WarmIfMissing but blocks while the queue
+// is full, providing backpressure for full-library warm passes so no file is
+// silently skipped. Intended for background goroutines; the on-demand path
+// never needs it. Safe to call from any goroutine.
+func (g *Generator) WarmWait(abs string, info os.FileInfo, maxDim int) {
+	if g.warm == nil || g.HasCached(abs, info, maxDim) {
+		return
+	}
+	g.warm <- warmJob{abs: abs, info: info, maxDim: maxDim}
 }
 
 // Get returns abs's cached thumbnail path, generating it if needed. The

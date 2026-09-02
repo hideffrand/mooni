@@ -151,14 +151,21 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	saved := make([]string, 0, len(fileHeaders))
+	warm := make([]dto.MediaItem, 0, len(fileHeaders))
 	for _, fh := range fileHeaders {
 		if err := h.saveUpload(destDir, fh); err != nil {
 			writeErr(w, http.StatusBadRequest, err)
 			return
 		}
 		saved = append(saved, fh.Filename)
+		if entry, _, err := h.svc.Stat(filepath.Join(destDir, fh.Filename)); err == nil {
+			warm = append(warm, entry)
+		}
 	}
 	h.svc.Invalidate(r.Context())
+	// Fresh uploads: generate thumbs now, before the phone's inevitable
+	// list refetch renders the grid cells.
+	h.svc.WarmPaths(warm)
 	writeJSON(w, http.StatusOK, map[string]any{"uploaded": saved})
 }
 

@@ -66,7 +66,7 @@ const warmCooldown = 2 * time.Minute
 // WarmAll schedules background generation of grid thumbs (and viewer large
 // previews) for every item, so first requests are served from disk instead of
 // paying decode/ffmpeg latency. In-process dedup: at most one pass per
-// cooldown; callers may invoke it on every list request. WarmIfMissing
+// cooldown; callers may invoke it on every list request. The warm pass
 // itself no-ops for already-cached files, so re-checking is cheap (one stat
 // per item) and also picks up files whose thumbnails were deleted manually.
 func (s *Service) WarmAll(ctx context.Context, items []dto.MediaItem) {
@@ -82,6 +82,16 @@ func (s *Service) WarmAll(ctx context.Context, items []dto.MediaItem) {
 	go s.warm(items)
 }
 
+// WarmPaths warms specific items right away, bypassing the cooldown. Used
+// for fresh uploads: the phone refetches the list immediately after an
+// upload and would otherwise race the thumb generation.
+func (s *Service) WarmPaths(items []dto.MediaItem) {
+	if s.thumbGen == nil || len(items) == 0 {
+		return
+	}
+	go s.warm(items)
+}
+
 func (s *Service) warm(items []dto.MediaItem) {
 	for _, it := range items {
 		abs, err := s.resolve(it.Path)
@@ -92,10 +102,13 @@ func (s *Service) warm(items []dto.MediaItem) {
 		if err != nil {
 			continue
 		}
-		// Grid cell thumbnail first (small, feeds the first screenful fast),
-		// then the viewer's large preview tier.
-		s.thumbGen.WarmIfMissing(abs, info, thumbMaxDim)
-		s.thumbGen.WarmIfMissing(abs, info, previewMaxDim)
+		// Grid cell thumbnail first (small, feeds the first screenful fast).
+		s.thumbGen.WarmWait(abs, info, thumbMaxDim)
+		// Large preview tier is only served for images - videos always stream
+		// the original and webp falls through to it, so skip both.
+		if it.Kind == KindImage && !thumbs.IsWebpExt(filepath.Ext(it.Name)) {
+			s.thumbGen.WarmWait(abs, info, previewMaxDim)
+		}
 	}
 }
 

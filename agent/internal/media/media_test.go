@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"mooni-backend/internal/dto"
 	"mooni-backend/internal/thumbs"
 )
 
@@ -275,4 +276,67 @@ func TestUploadIntoSubfolderAndTraversalNeutralized(t *testing.T) {
 	if len(items) != 1 || items[0].Name != "up.jpg" {
 		t.Fatalf("expected up.jpg after invalidation, got %+v", items)
 	}
+}
+
+func waitForThumb(t *testing.T, g *thumbs.Generator, abs string, maxDim int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if g.HasCached(abs, mustStat(abs), maxDim) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("thumbnail at %dpx for %s was not generated in time", maxDim, abs)
+}
+
+func mustStat(path string) os.FileInfo {
+	info, err := os.Stat(path)
+	if err != nil {
+		panic(err)
+	}
+	return info
+}
+
+func TestWarmAllGeneratesThumbsInBackground(t *testing.T) {
+	dir := t.TempDir()
+	thumbGen := thumbs.New(t.TempDir())
+	svc := NewService(dir, newFake(), thumbGen)
+
+	writeJPEG(t, filepath.Join(dir, "a.jpg"), 300, 150)
+	writeJPEG(t, filepath.Join(dir, "sub", "b.png"), 200, 400)
+	items, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+
+	svc.WarmAll(context.Background(), items)
+	waitForThumb(t, thumbGen, filepath.Join(dir, "a.jpg"), 256)
+	waitForThumb(t, thumbGen, filepath.Join(dir, "sub", "b.png"), 256)
+	// Large preview tier warms for images too.
+	waitForThumb(t, thumbGen, filepath.Join(dir, "a.jpg"), 2560)
+
+	// A second call inside the cooldown window is a no-op, not a panic or
+	// a second pass; state stays consistent.
+	svc.WarmAll(context.Background(), items)
+}
+
+func TestWarmPathsBypassesCooldown(t *testing.T) {
+	dir := t.TempDir()
+	thumbGen := thumbs.New(t.TempDir())
+	svc := NewService(dir, newFake(), thumbGen)
+
+	writeJPEG(t, filepath.Join(dir, "fresh.jpg"), 300, 150)
+	entry, _, err := svc.Stat("fresh.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// WarmPaths must work even though no WarmAll ran before (zero lastWarm
+	// does not matter - it ignores the cooldown entirely).
+	svc.WarmPaths([]dto.MediaItem{entry})
+	waitForThumb(t, thumbGen, filepath.Join(dir, "fresh.jpg"), 256)
 }
