@@ -17,7 +17,7 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
-import { createClient } from "../api/client";
+import { createClient, isUnreachable } from "../api/client";
 import {
   listFiles,
   mkdir,
@@ -32,6 +32,7 @@ import { FileEntry } from "../types";
 import PromptModal from "./components/PromptModal";
 import ActionSheet from "./components/ActionSheet";
 import FileTypeIcon from "./components/FileTypeIcon";
+import OfflineOverlay from "./components/OfflineOverlay";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FileBrowser">;
 
@@ -83,6 +84,7 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -192,8 +194,13 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
     try {
       const res = await listFiles(client, currentPath);
       setEntries(res.entries);
+      setOffline(false);
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? e.message ?? "Failed to load folder");
+      if (isUnreachable(e)) {
+        setOffline(true);
+      } else {
+        setError(e?.response?.data?.error ?? e.message ?? "Failed to load folder");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -728,6 +735,8 @@ export default function FileBrowserScreen({ route, navigation }: Props) {
           <Ionicons name="add" size={28} color={colors.onPrimary} />
         </TouchableOpacity>
       )}
+
+      {offline && <OfflineOverlay onRetry={load} />}
     </View>
   );
 }

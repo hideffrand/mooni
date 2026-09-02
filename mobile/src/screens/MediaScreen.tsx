@@ -19,9 +19,10 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
-import { createClient } from "../api/client";
+import { createClient, isUnreachable } from "../api/client";
 import { listMedia, listMediaFolders, mediaUrl, uploadMedia, deleteMedia } from "../api/media";
 import { downloadSelected } from "../api/files";
+import OfflineOverlay from "./components/OfflineOverlay";
 import { extOf } from "../utils/fileTypes";
 import { MediaFolder, MediaItem } from "../types";
 
@@ -72,6 +73,7 @@ export default function MediaScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
   const [dlStatus, setDlStatus] = useState<{ done: number; total: number } | null>(null);
@@ -98,8 +100,11 @@ export default function MediaScreen({ route, navigation }: Props) {
         setItems(res.items);
         setFolders(res.folders);
       }
+      setOffline(false);
     } catch (e: any) {
-      if (e?.response?.status === 404) {
+      if (isUnreachable(e)) {
+        setOffline(true);
+      } else if (e?.response?.status === 404) {
         setError("This server doesn't have the Media library enabled.");
       } else {
         setError(e?.response?.data?.error ?? e.message ?? "Failed to load media");
@@ -475,6 +480,8 @@ export default function MediaScreen({ route, navigation }: Props) {
           <Ionicons name="add" size={30} color={colors.onPrimary} />
         </TouchableOpacity>
       )}
+
+      {offline && <OfflineOverlay onRetry={load} />}
     </View>
   );
 }

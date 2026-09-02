@@ -11,6 +11,15 @@ export function createClient(settings: ServerSettings): AxiosInstance {
   });
 }
 
+/** True when the request never got a response (timeout, network failure, DNS). */
+export function isUnreachable(e: any): boolean {
+  return (
+    e?.code === "ECONNABORTED" ||
+    e?.code === "ERR_NETWORK" ||
+    (!e?.response && !!e?.request)
+  );
+}
+
 export function fileUrl(
   settings: ServerSettings,
   endpoint: "download" | "preview" | "thumb",

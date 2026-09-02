@@ -16,11 +16,12 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useDevices } from "../context/DevicesContext";
 import { useTheme } from "../context/ThemeContext";
 import { ThemeColors } from "../context/ThemeContext";
-import { createClient } from "../api/client";
+import { createClient, isUnreachable } from "../api/client";
 import { getConfirmToken, getSystemStats, powerAction, PowerAction } from "../api/system";
 import { SystemStats } from "../types";
 import { authenticateWithDeviceLock, biometricAuthAvailable } from "../utils/biometricAuth";
 import TypeToConfirmModal from "./components/TypeToConfirmModal";
+import OfflineOverlay from "./components/OfflineOverlay";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -441,6 +442,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   const [powerAction_, setPowerAction_] = useState<PowerAction | null>(null);
   const [powerToken, setPowerToken] = useState("");
@@ -452,8 +454,13 @@ export default function HomeScreen({ navigation }: Props) {
     setError(null);
     try {
       setStats(await getSystemStats(client));
+      setOffline(false);
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? e.message ?? "Failed to load stats");
+      if (isUnreachable(e)) {
+        setOffline(true);
+      } else {
+        setError(e?.response?.data?.error ?? e.message ?? "Failed to load stats");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -528,8 +535,8 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   return (
+    <View style={styles.container}>
     <ScrollView
-      style={styles.container}
       contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />
@@ -653,7 +660,10 @@ export default function HomeScreen({ navigation }: Props) {
         onCancel={() => setPowerAction_(null)}
         onConfirm={confirmPower}
       />
+
+      {offline && <OfflineOverlay onRetry={() => { setError(null); load(); }} />}
     </ScrollView>
+    </View>
   );
 }
 
