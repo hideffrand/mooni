@@ -28,6 +28,11 @@ import PinchZoomImage from "./components/PinchZoomImage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MediaViewer">;
 
+function extOf(name: string): string {
+  const parts = name.split(".");
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+}
+
 function MediaPlayer({ source, style }: { source: VideoSource; style: object }) {
   const player = useVideoPlayer(source, (player) => {
     player.loop = false;
@@ -183,6 +188,13 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
           <PinchZoomImage
             uri={mediaUrl(activeDevice, "preview", m.path, "large")}
             headers={{ "X-API-Key": activeDevice.apiKey }}
+            // Same small thumb the grid already cached - it paints instantly
+            // while the large tier streams in behind it.
+            placeholderUri={
+              extOf(m.name) === "webp"
+                ? mediaUrl(activeDevice, "preview", m.path)
+                : mediaUrl(activeDevice, "thumb", m.path)
+            }
           />
         </DragDismissView>
       )}
@@ -223,6 +235,13 @@ export default function MediaViewerScreen({ route, navigation }: Props) {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+        // Defaults mount ~10 pages, each video page spinning up a player.
+        // Mount only the opened page and keep one neighbour rendered on
+        // either side; the thumb placeholder covers the swap-in anyway.
+        initialNumToRender={1}
+        windowSize={3}
+        maxToRenderPerBatch={1}
+        removeClippedSubviews
         style={{ width, height }}
       />
 

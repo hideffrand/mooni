@@ -18,6 +18,10 @@ import (
 // thumbMaxDim is the longest edge of a generated thumbnail.
 const thumbMaxDim = 256
 
+// previewMaxDim is the longest edge of the cached "large" preview tier -
+// big enough for any phone screen, a fraction of the original's bytes.
+const previewMaxDim = 2560
+
 type Handler struct {
 	svc            *Service
 	maxUploadBytes int64
@@ -82,6 +86,9 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
+	// Kick off background thumbnail generation for anything not cached yet,
+	// so the first grid load doesn't pay decode/ffmpeg latency per request.
+	h.svc.WarmAll(r.Context(), items)
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
@@ -96,10 +103,6 @@ func (h *Handler) thumb(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err)
 	}
 }
-
-// previewMaxDim is the longest edge of the cached "large" preview tier -
-// big enough for any phone screen, a fraction of the original's bytes.
-const previewMaxDim = 2560
 
 func (h *Handler) preview(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")

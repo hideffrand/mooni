@@ -1,3 +1,5 @@
+// Package media implements the Photos-style library: listing, cached
+// thumbnails/previews, upload and delete.
 package media
 
 import (
@@ -8,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mooni-backend/internal/cache"
@@ -42,6 +45,9 @@ type Service struct {
 	Root     string
 	cache    cache.Cache
 	thumbGen *thumbs.Generator
+
+	warmMu   sync.Mutex
+	lastWarm time.Time
 }
 
 func NewService(root string, c cache.Cache, g *thumbs.Generator) *Service {
@@ -51,6 +57,46 @@ func NewService(root string, c cache.Cache, g *thumbs.Generator) *Service {
 // resolve is the sandbox boundary: every user path goes through fsutil.
 func (s *Service) resolve(userPath string) (string, error) {
 	return fsutil.Resolve(s.Root, userPath)
+}
+
+// warmCooldown spacing lets freshly-listed items settle (their thumbs were
+// likely just requested anyway) without re-walking on every list call.
+const warmCooldown = 2 * time.Minute
+
+// WarmAll schedules background generation of grid thumbs (and viewer large
+// previews) for every item, so first requests are served from disk instead of
+// paying decode/ffmpeg latency. In-process dedup: at most one pass per
+// cooldown; callers may invoke it on every list request. WarmIfMissing
+// itself no-ops for already-cached files, so re-checking is cheap (one stat
+// per item) and also picks up files whose thumbnails were deleted manually.
+func (s *Service) WarmAll(ctx context.Context, items []dto.MediaItem) {
+	if s.thumbGen == nil || len(items) == 0 {
+		return
+	}
+	s.warmMu.Lock()
+	defer s.warmMu.Unlock()
+	if time.Since(s.lastWarm) < warmCooldown {
+		return
+	}
+	s.lastWarm = time.Now()
+	go s.warm(items)
+}
+
+func (s *Service) warm(items []dto.MediaItem) {
+	for _, it := range items {
+		abs, err := s.resolve(it.Path)
+		if err != nil {
+			continue
+		}
+		info, err := os.Stat(abs)
+		if err != nil {
+			continue
+		}
+		// Grid cell thumbnail first (small, feeds the first screenful fast),
+		// then the viewer's large preview tier.
+		s.thumbGen.WarmIfMissing(abs, info, thumbMaxDim)
+		s.thumbGen.WarmIfMissing(abs, info, previewMaxDim)
+	}
 }
 
 // List walks the media library and returns every image/video, newest first.

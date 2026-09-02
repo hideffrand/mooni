@@ -285,7 +285,8 @@ export default function MediaScreen({ route, navigation }: Props) {
             }}
             style={styles.cellImage}
             contentFit="cover"
-            cachePolicy="disk"
+            cachePolicy="memory-disk"
+            transition={100}
             recyclingKey={item.path}
             onError={() => {
               if (item.kind === "video") {
@@ -449,6 +450,14 @@ export default function MediaScreen({ route, navigation }: Props) {
           ListHeaderComponent={albumStrip()}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
+          // Default windows render ~21 screens of images at once; that
+          // floods the network and CPU on first open. Render in small
+          // batches instead: first paint sooner, scrolling stays smooth.
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.text} />
           }

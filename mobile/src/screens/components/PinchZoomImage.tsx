@@ -17,9 +17,12 @@ function clamp(v: number, min: number, max: number) {
 export default function PinchZoomImage({
   uri,
   headers,
+  placeholderUri,
 }: {
   uri: string;
   headers?: Record<string, string>;
+  /** Small grid thumb already on the phone; painted while `uri` streams. */
+  placeholderUri?: string;
 }) {
   const { width, height } = useWindowDimensions();
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
@@ -120,6 +123,17 @@ export default function PinchZoomImage({
       <Animated.View
         style={[styles.image, { transform: [{ translateX: tx }, { translateY: ty }, { scale }] }]}
       >
+        {placeholderUri ? (
+          /* The grid's cached thumb, upscaled behind the large tier: content
+             appears the moment the page mounts instead of a spinner-on-black. */
+          <Image
+            source={{ uri: placeholderUri, headers }}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            cachePolicy="disk"
+            transition={0}
+          />
+        ) : null}
         {/* expo-image downsamples large originals; RN Image can silently fail
             to decode multi-MB photos on Android. */}
         <Image
@@ -134,7 +148,9 @@ export default function PinchZoomImage({
           onError={() => setStatus("error")}
           transition={120}
         />
-        {status === "loading" && <ActivityIndicator style={StyleSheet.absoluteFill} color="#fff" />}
+        {status === "loading" && !placeholderUri && (
+          <ActivityIndicator style={StyleSheet.absoluteFill} color="#fff" />
+        )}
         {status === "error" && (
           <TouchableOpacity
             style={StyleSheet.absoluteFill}

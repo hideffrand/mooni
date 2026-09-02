@@ -38,10 +38,21 @@ func IsVideoExt(ext string) bool { return videoExt[strings.ToLower(ext)] }
 // maxConcurrentGen caps parallel generations so grids don't stampede the CPU.
 const maxConcurrentGen = 4
 
+// warmQueueSize bounds the background warm queue; overflow is dropped since
+// on-demand requests generate on demand anyway.
+const warmQueueSize = 512
+
+type warmJob struct {
+	abs    string
+	info   os.FileInfo
+	maxDim int
+}
+
 type Generator struct {
 	dir    string
 	sem    chan struct{}
 	ffmpeg string // absolute path, or "" when ffmpeg isn't installed
+	warm   chan warmJob
 }
 
 // New creates a generator caching into dir; video thumbs need ffmpeg on PATH.
@@ -52,7 +63,44 @@ func New(dir string) *Generator {
 	} else {
 		log.Printf("video thumbnails enabled (%s)", p)
 	}
-	return &Generator{dir: dir, sem: make(chan struct{}, maxConcurrentGen), ffmpeg: p}
+	g := &Generator{dir: dir, sem: make(chan struct{}, maxConcurrentGen), ffmpeg: p, warm: make(chan warmJob, warmQueueSize)}
+	go g.warmWorker()
+	return g
+}
+
+func (g *Generator) warmWorker() {
+	for job := range g.warm {
+		if _, _, err := g.Get(job.abs, job.info, job.maxDim); err != nil && !errors.Is(err, ErrUnsupported) {
+			log.Printf("warm thumbnail %s: %v", job.abs, err)
+		}
+	}
+}
+
+// HasCached reports whether abs already has a cached thumbnail at maxDim.
+// One stat, no generation, safe from any goroutine.
+func (g *Generator) HasCached(abs string, info os.FileInfo, maxDim int) bool {
+	ext := strings.ToLower(filepath.Ext(abs))
+	if !imageExt[ext] || ext == ".webp" {
+		return false
+	}
+	if videoExt[ext] && g.ffmpeg == "" {
+		// Video thumbs need ffmpeg; without it nothing can be cached.
+		return false
+	}
+	_, err := os.Stat(g.cachePath(abs, info, maxDim))
+	return err == nil
+}
+
+// WarmIfMissing schedules background generation of abs's thumbnail when it
+// isn't cached yet. Never blocks and never generates inline.
+func (g *Generator) WarmIfMissing(abs string, info os.FileInfo, maxDim int) {
+	if g.HasCached(abs, info, maxDim) {
+		return
+	}
+	select {
+	case g.warm <- warmJob{abs: abs, info: info, maxDim: maxDim}:
+	default: // queue full: the on-demand path will generate when asked
+	}
 }
 
 // Get returns abs's cached thumbnail path, generating it if needed. The
