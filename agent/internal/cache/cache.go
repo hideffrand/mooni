@@ -17,14 +17,16 @@ type Cache interface {
 	Incr(ctx context.Context, key string) int64
 }
 
-// cache is Redis-backed; with no addr configured every method is a no-op.
+// cache is Redis-backed; with no addr configured it falls back to an
+// in-process store so list caching works with zero configuration.
 type cache struct {
 	rdb *redis.Client
+	mem *memory // used when rdb == nil
 }
 
 func New(addr, password string) *cache {
 	if addr == "" {
-		return &cache{}
+		return &cache{mem: newMemory()}
 	}
 	return &cache{rdb: redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -56,7 +58,7 @@ func (c *cache) Close() error {
 
 func (c *cache) Get(ctx context.Context, key string) ([]byte, bool) {
 	if c.rdb == nil {
-		return nil, false
+		return c.mem.Get(ctx, key)
 	}
 	b, err := c.rdb.Get(ctx, key).Bytes()
 	if errors.Is(err, redis.Nil) {
@@ -71,6 +73,7 @@ func (c *cache) Get(ctx context.Context, key string) ([]byte, bool) {
 
 func (c *cache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) {
 	if c.rdb == nil {
+		c.mem.Set(ctx, key, value, ttl)
 		return
 	}
 	if err := c.rdb.Set(ctx, key, value, ttl).Err(); err != nil {
@@ -80,7 +83,7 @@ func (c *cache) Set(ctx context.Context, key string, value []byte, ttl time.Dura
 
 func (c *cache) GetInt64(ctx context.Context, key string) int64 {
 	if c.rdb == nil {
-		return 0
+		return c.mem.GetInt64(ctx, key)
 	}
 	n, err := c.rdb.Get(ctx, key).Int64()
 	if errors.Is(err, redis.Nil) {
@@ -93,11 +96,11 @@ func (c *cache) GetInt64(ctx context.Context, key string) int64 {
 	return n
 }
 
-// Incr atomically increments key. Returns the new value, or 0 when disabled
-// or on error (fail-open: the caller just skips invalidation).
+// Incr atomically increments key. Returns the new value, or 0 on error
+// (fail-open: the caller just skips invalidation).
 func (c *cache) Incr(ctx context.Context, key string) int64 {
 	if c.rdb == nil {
-		return 0
+		return c.mem.Incr(ctx, key)
 	}
 	n, err := c.rdb.Incr(ctx, key).Result()
 	if err != nil {

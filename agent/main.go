@@ -42,12 +42,14 @@ func main() {
 	c := cache.New(cfg.RedisAddr, cfg.RedisPassword)
 	if c.Enabled() {
 		if err := c.Ping(context.Background()); err != nil {
-			log.Printf("redis unreachable (%v) - running without cache", err)
+			log.Printf("redis unreachable (%v) - falling back to in-process cache", err)
 			c.Close()
 			c = cache.New("", "")
 		} else {
 			log.Printf("redis cache enabled (%s)", cfg.RedisAddr)
 		}
+	} else {
+		log.Println("no redis configured - using in-process cache")
 	}
 
 	thumbGen := thumbs.New(thumbDir())

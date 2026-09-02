@@ -149,7 +149,8 @@ export MOONI_PORT=8080
 # Optional - a dedicated folder for the Photos-style media library. Unset to
 # disable the media feature (see "Media library" below).
 export MOONI_MEDIA_DIR=/home/you/mooni-media
-# Optional - see "Redis caching" below. Skip both lines to run uncached.
+# Optional - see "Response caching" below. Skip to use the built-in
+# in-process cache instead of Redis.
 export MOONI_REDIS_ADDR=127.0.0.1:6379
 export MOONI_REDIS_PASSWORD=  # optional, if Redis requires auth
 
@@ -216,7 +217,7 @@ notification ("Mooni: CPU at 95% ...") when a configured threshold is crossed:
   a notification to your phone, treat them accordingly). Everything is off by
   default.
 
-## Redis caching (optional)
+## Response caching (optional Redis)
 
 The backend can cache two things in Redis to make the app feel snappier:
 
@@ -232,16 +233,17 @@ The backend can cache two things in Redis to make the app feel snappier:
 Enable it by pointing the agent at a running Redis server:
 
 ```bash
-export MOONI_REDIS_ADDR=127.0.0.1:6379   # required to enable the cache
+export MOONI_REDIS_ADDR=127.0.0.1:6379   # optional - enables Redis-backed caching
 export MOONI_REDIS_PASSWORD=             # only if Redis requires AUTH
 ```
 
 Running via systemd? Add the same two lines to `~/.mooni/config.env` - the
 service already loads that file through `EnvironmentFile`.
 
-Without `MOONI_REDIS_ADDR` the agent runs exactly as before, uncached. If
-Redis is configured but unreachable at startup, the agent logs a warning and
-keeps running uncached - a Redis outage never breaks the file API.
+Without `MOONI_REDIS_ADDR` the agent caches in-process instead - listings
+survive only until restart, but no extra service is needed. If Redis is
+configured but unreachable at startup, the agent logs a warning and falls
+back to the in-process cache - a Redis outage never breaks the file API.
 
 Downloads and previews are **never** cached: they stream from disk and rely
 on HTTP Range support for video/audio scrubbing.

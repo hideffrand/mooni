@@ -57,7 +57,8 @@ Redis is optional but nice-to-have: if a Redis server is running, add
 `MOONI_REDIS_ADDR=127.0.0.1:6379` (and optionally `MOONI_REDIS_PASSWORD`) to
 `~/.mooni/config.env` and the agent will cache file listings and the health
 dashboard in it - see `agent/README.md` for details. Without it, everything
-works the same, just uncached.
+works the same using a built-in in-process cache (listings aren't preserved
+across restarts).
 
 ### 2. Set up the app (on your phone)
 
