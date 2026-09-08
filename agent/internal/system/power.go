@@ -26,6 +26,14 @@ func runPower(action string) error {
 			{"sudo", "-n", "systemctl", "poweroff"},
 			{"loginctl", "poweroff"},
 		}
+	case "lock":
+		// Lock the desktop session. The non-sudo variant only works when the
+		// agent runs inside the user's session; under the systemd service the
+		// sudo variant (root, all sessions) is the one that can succeed.
+		candidates = [][]string{
+			{"loginctl", "lock-session"},
+			{"sudo", "-n", "loginctl", "lock-sessions"},
+		}
 	default:
 		return fmt.Errorf("unknown power action %q", action)
 	}

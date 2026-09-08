@@ -50,7 +50,7 @@ const FEATURES = [
   {
     icon: Power,
     title: "Power Control",
-    text: "Reboot or shut down your machine from the app - guarded by your phone's fingerprint/PIN plus a single-use confirm token, so a stray tap or leaked key can't do damage.",
+    text: "Reboot, shut down, or lock the screen of your machine from the app - guarded by your phone's fingerprint/PIN plus a single-use confirm token, so a stray tap or leaked key can't do damage.",
   },
   {
     icon: QrCode,

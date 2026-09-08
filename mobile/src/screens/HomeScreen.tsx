@@ -487,10 +487,12 @@ export default function HomeScreen({ navigation }: Props) {
       await powerAction(client, action, token);
       setPowerAction_(null);
       Alert.alert(
-        action === "reboot" ? "Rebooting" : "Shutting down",
+        action === "reboot" ? "Rebooting" : action === "shutdown" ? "Shutting down" : "Locking",
         action === "reboot"
           ? "The device is restarting. It will reappear when it's back online."
-          : "The device is powering off."
+          : action === "shutdown"
+          ? "The device is powering off."
+          : "The screen is now locked."
       );
     } catch (e: any) {
       Alert.alert(
@@ -506,7 +508,11 @@ export default function HomeScreen({ navigation }: Props) {
     if (!client) return;
     if (await biometricAuthAvailable()) {
       const ok = await authenticateWithDeviceLock(
-        action === "reboot" ? "Reboot the device?" : "Shut down the device?"
+        action === "reboot"
+          ? "Reboot the device?"
+          : action === "shutdown"
+          ? "Shut down the device?"
+          : "Lock the device screen?"
       );
       if (ok) await executePower(action);
     } else {
@@ -641,6 +647,10 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="power" size={18} color={colors.onPrimary} />
                 <Text style={styles.powerBtnText}>Shutdown</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[styles.powerBtn, styles.powerBtnLock]} onPress={() => openPower("lock")}>
+                <Ionicons name="lock-closed" size={18} color={colors.onPrimary} />
+                <Text style={styles.powerBtnText}>Lock</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -648,15 +658,25 @@ export default function HomeScreen({ navigation }: Props) {
 
       <TypeToConfirmModal
         visible={!!powerAction_}
-        title={powerAction_ === "reboot" ? "Reboot device?" : "Shut down device?"}
+        title={
+          powerAction_ === "reboot"
+            ? "Reboot device?"
+            : powerAction_ === "shutdown"
+            ? "Shut down device?"
+            : "Lock device screen?"
+        }
         message={
           powerAction_ === "reboot"
             ? "This will restart the machine. Any unsaved work on it will be lost."
-            : "This will power the machine off. It stays off until someone starts it again."
+            : powerAction_ === "shutdown"
+            ? "This will power the machine off. It stays off until someone starts it again."
+            : "This will lock the desktop session on the machine. Requires an active screen session."
         }
         token={powerToken}
         busy={powerBusy}
-        confirmLabel={powerAction_ === "reboot" ? "Reboot" : "Shutdown"}
+        confirmLabel={
+          powerAction_ === "reboot" ? "Reboot" : powerAction_ === "shutdown" ? "Shutdown" : "Lock"
+        }
         onCancel={() => setPowerAction_(null)}
         onConfirm={confirmPower}
       />
@@ -850,6 +870,7 @@ function makeStyles(colors: ThemeColors) {
     },
     powerBtnReboot: { backgroundColor: colors.primary },
     powerBtnShutdown: { backgroundColor: colors.danger },
+    powerBtnLock: { backgroundColor: colors.primary },
     powerBtnText: { color: colors.onPrimary, fontWeight: "700", fontSize: 15 },
   });
 }

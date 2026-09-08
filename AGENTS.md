@@ -61,13 +61,15 @@ Change the format in one → change the other. App code uses global `btoa`/`atob
 - App is **Android-first** - don't add iOS-only APIs (no `ActionSheetIOS`, no iOS-only styling). Long-press menus use the custom `ActionSheet` component because Android's `Alert` caps at 3 buttons.
 - File-type visuals (thumbnails vs colored ext badges vs glyphs) come from `src/utils/fileTypes.ts` + the shared `FileTypeIcon` component - don't re-implement per-screen icon mapping (ShareUploadScreen's `ionIconFor` uses the same util).
 - App downloads/uploads stream via `expo-file-system` (`downloadAsync`/`uploadAsync`), not axios, for large files.
-- Power control (reboot/shutdown from Home) IS implemented. It's gated by the
+- Power control (reboot/shutdown/lock from Home) IS implemented. It's gated by the
   phone's device lock (fingerprint/PIN via `expo-local-authentication`, in
   `mobile/src/utils/biometricAuth.ts`; type-to-confirm fallback when the phone
   has no lock set) AND a short-lived single-use `X-Confirm-Token`: the app
   calls `POST /api/system/confirm-token` right before the power request, and
   the backend consumes that token in `agent/internal/system/confirm.go`
   (`issue`/`consume`), so a leaked API key or replayed request alone can't
-  reboot/shutdown the machine. Power still relies on the passwordless-sudo
-  rule for the actual `systemctl reboot`/`poweroff`.
+  reboot/shutdown the machine. Lock uses `loginctl lock-session` (sudo
+  `loginctl lock-sessions` fallback under the systemd service). Power still
+  relies on the passwordless-sudo rule for the actual
+  `systemctl reboot`/`poweroff`.
 - NOT implemented - don't assume they exist: docker manager, systemd service control, wake-on-LAN, remote terminal/SSH.

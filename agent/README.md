@@ -25,10 +25,11 @@ This script automatically:
 - Builds the binary
 - Detects the IP (Tailscale first, otherwise the LAN IP automatically)
 - Optionally installs it as a systemd service (auto-start on boot)
-- Optionally grants **passwordless sudo for just `systemctl reboot` and
-  `systemctl poweroff`** so the app's Reboot/Shutdown buttons work - a scoped
-  rule in `/etc/sudoers.d/mooni-power` (validated with `visudo -cf`), nothing
-  else gets sudo
+- Optionally grants **passwordless sudo for just `systemctl reboot`,
+  `systemctl poweroff`, and `loginctl lock-sessions`** so the app's
+  Reboot/Shutdown/Lock buttons work - a scoped rule in
+  `/etc/sudoers.d/mooni-power` (validated with `visudo -cf`), nothing else
+  gets sudo
 - **Prints the QR code + pairing code text** in the terminal
 
 Configuration is stored at `~/.mooni/config.env` (mode 600), and the last
@@ -92,6 +93,10 @@ source ~/.mooni/config.env && ./mooni-backend -pair -name "Family Phone"
   `install.sh` (or a local console session for `loginctl`).
 - `POST /api/system/shutdown` - power the machine off. Same requirement as
   reboot.
+- `POST /api/system/lock` - lock the desktop screen session
+  (`loginctl lock-session`; falls back to `sudo loginctl lock-sessions`).
+  Requires a valid `X-Confirm-Token` header. Only meaningful on machines with
+  an active graphical session.
 - `GET  /api/media/list` - Photos-style media library index (see below). Add
   `mode=browse&path=...` to scope the response to one library folder: its
   subfolders as albums (`folders`, each with a recursive item count and newest
@@ -127,7 +132,8 @@ header `X-API-Key: <your api key>`.
   `[boot]` / `systemd=true` (then restart with `wsl --shutdown`). Without it,
   the script skips the service and prints the manual-run command instead.
 - **Power control (Reboot/Shutdown):** skipped on WSL - `systemctl reboot` /
-  `poweroff` would only restart or shut down the WSL distro, never Windows.
+  `poweroff` would only restart or shut down the WSL distro, never Windows,
+  and there is no graphical session to lock.
   Reboot Windows from the Windows side (`shutdown /r`).
 - **Reaching the server from your phone:** WSL's default NAT networking gives
   the distro an IP your phone can't reach directly. Either enable mirrored
@@ -353,7 +359,7 @@ rm -rf ~/.mooni            # config + API key + saved pairing codes
   manipulated path.
 - Filesystem errors (e.g. messages containing local paths) are not leaked to
   the client - the client only gets a generic message.
-- The app gates Reboot/Shutdown behind the phone's device lock: the user must
+- The app gates Reboot/Shutdown/Lock behind the phone's device lock: the user must
   authenticate with their fingerprint/PIN (via `expo-local-authentication`)
   before the request is sent, and phones without a lock fall back to the
   **type-to-confirm modal**. That gate is enforced end-to-end: the power

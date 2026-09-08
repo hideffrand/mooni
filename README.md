@@ -19,9 +19,10 @@ on your router.
   load, uptime, and temperature.
 - **Alerts** - set CPU/RAM/disk/temperature thresholds per device and get a
   push notification on your phone when one is crossed.
-- **Power Control** - reboot or shut down your machine from the app, guarded
-  by your phone's fingerprint/PIN (with a type-to-confirm fallback) so a
-  stray tap - or a leaked API key - can't do damage.
+- **Power Control** - reboot, shut down, or lock the screen of your machine
+  from the app, guarded by your phone's fingerprint/PIN (with a
+  type-to-confirm fallback) so a stray tap - or a leaked API key - can't do
+  damage.
 
 ## How it works (the short version)
 
@@ -82,8 +83,8 @@ health.
 - **Files**: list folders, upload/download, rename/copy/move/delete,
   preview images, videos and audio, share files to other apps.
 - **Alerts**: threshold notifications (CPU/RAM/disk/temp) pushed to the app.
-- **Power**: reboot or shut down the selected machine; the app asks you to
-  type a random text token before anything happens.
+- **Power**: reboot, shut down, or lock the screen of the selected machine;
+  the app asks you to type a random text token before anything happens.
 - **Multiple servers**: keep several servers/devices in the app and switch
   between them anytime.
 

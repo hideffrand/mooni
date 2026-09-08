@@ -6,7 +6,7 @@ export async function getSystemStats(client: AxiosInstance): Promise<SystemStats
   return res.data;
 }
 
-export type PowerAction = "reboot" | "shutdown";
+export type PowerAction = "reboot" | "shutdown" | "lock";
 
 export async function getConfirmToken(client: AxiosInstance): Promise<string> {
   const res = await client.post<{ token: string }>("/api/system/confirm-token");

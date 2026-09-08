@@ -252,7 +252,13 @@ elif confirm "Allow the app to reboot/shutdown this machine (needs sudo)?" "y/N"
     echo "systemctl not found - power control not configured."
   else
     SUDOERS_FILE="/etc/sudoers.d/mooni-power"
-    sudo bash -c "printf '%s ALL=(ALL) NOPASSWD: %s reboot, %s poweroff\\n' \"$USER\" \"$SYSTEMCTL\" \"$SYSTEMCTL\" > $SUDOERS_FILE"
+    LOGINCTL="$(command -v loginctl)"
+    SUDOERS_CMDS="$SYSTEMCTL reboot, $SYSTEMCTL poweroff"
+    # loginctl grant only exists for the lock fallback; skip if not installed.
+    if [[ -n "$LOGINCTL" ]]; then
+      SUDOERS_CMDS+=", $LOGINCTL lock-sessions"
+    fi
+    sudo bash -c "printf '%s ALL=(ALL) NOPASSWD: %s\\n' \"$USER\" \"$SUDOERS_CMDS\" > $SUDOERS_FILE"
     sudo chmod 440 "$SUDOERS_FILE"
     if ! sudo visudo -cf "$SUDOERS_FILE"; then
       sudo rm -f "$SUDOERS_FILE"

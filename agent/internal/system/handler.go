@@ -28,6 +28,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/system/confirm-token", h.issueToken)
 	mux.HandleFunc("POST /api/system/reboot", h.reboot)
 	mux.HandleFunc("POST /api/system/shutdown", h.shutdown)
+	mux.HandleFunc("POST /api/system/lock", h.lock)
 }
 
 func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +60,10 @@ func (h *Handler) reboot(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) shutdown(w http.ResponseWriter, r *http.Request) {
 	h.power(w, r, "shutdown")
+}
+
+func (h *Handler) lock(w http.ResponseWriter, r *http.Request) {
+	h.power(w, r, "lock")
 }
 
 func (h *Handler) issueToken(w http.ResponseWriter, r *http.Request) {
