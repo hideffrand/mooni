@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
-import { Download } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import StatsWidget from "@/app/components/StatsWidget";
 import FeatureTour from "@/app/components/FeatureTour";
 import Reveal from "@/app/components/Reveal";
@@ -144,7 +144,7 @@ export default function Home() {
             </div>
 
             <h1
-              className="fade-up font-[family-name:var(--font-heading)] text-4xl leading-[1.1] tracking-tight text-[#E7EEFC] sm:text-5xl lg:text-6xl"
+              className="fade-up font-[family-name:var(--font-heading)] text-3xl leading-[1.1] tracking-tight text-[#E7EEFC] sm:text-4xl lg:text-5xl"
               style={{ animationDelay: "90ms" }}
             >
               Your server never sleeps.
@@ -153,7 +153,7 @@ export default function Home() {
             </h1>
 
             <p
-              className="fade-up mt-6 max-w-md text-lg leading-relaxed text-[#B9C4D1]"
+              className="fade-up mt-4 max-w-md text-base leading-relaxed text-[#B9C4D1]"
               style={{ animationDelay: "180ms" }}
             >
               Mooni is a companion app for the Linux machine you already run —
@@ -207,45 +207,55 @@ export default function Home() {
         </section>
 
         <div className="mx-auto border-t border-[#1E2733]">
-          <FeatureTour>
-            <section id="how-it-works" className="mx-auto max-w-3xl py-24">
-              <Reveal>
+          <FeatureTour />
+        </div>
+
+        <section id="how-it-works" className="border-t border-[#1E2733]">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <Reveal>
+              <div className="mx-auto max-w-xl text-center">
                 <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
                   Set up in three steps
                 </h2>
-                <p className="mt-3 max-w-md text-[#77879A]">
+                <p className="mt-3 text-[#77879A]">
                   No IPs, no exposed ports, no key you have to type in by hand.
                 </p>
-              </Reveal>
+              </div>
+            </Reveal>
 
-              <ol className="mt-10">
-                {STEPS.map((s, i) => (
-                  <Reveal key={s.title}>
-                    <li className="group relative flex gap-6 pb-10 last:pb-0">
-                      {i < STEPS.length - 1 && (
-                        <span
-                          aria-hidden
-                          className="absolute left-4 top-9 h-[calc(100%-2rem)] w-px bg-[#1E2733]"
-                        />
-                      )}
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#1E2733] font-[family-name:var(--font-heading)] text-sm text-[#8FB6FF] transition-all duration-300 group-hover:scale-110 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
+            <ol className="mt-14 flex flex-col items-center md:flex-row md:items-stretch md:gap-3">
+              {STEPS.map((s, i) => (
+                <Reveal
+                  key={s.title}
+                  className="flex w-full flex-col items-center gap-6 md:flex-1 md:flex-row md:items-center md:gap-3"
+                >
+                  <li className="group flex w-full max-w-sm flex-1 flex-col items-center rounded-2xl border border-[#1E2733] bg-[#101620]/60 px-6 py-8 text-center transition-colors duration-200 hover:border-[#8FB6FF]/40">
+                    <span className="relative flex h-14 w-14 items-center justify-center">
+                      <span
+                        aria-hidden
+                        className="absolute inline-flex h-full w-full rounded-full bg-[#8FB6FF]/10 transition-transform duration-300 group-hover:scale-110"
+                      />
+                      <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#8FB6FF]/50 font-[family-name:var(--font-heading)] text-lg text-[#8FB6FF] transition-all duration-300 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
                         {i + 1}
                       </span>
-                      <div className="pt-0.5">
-                        <h3 className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
-                          {s.title}
-                        </h3>
-                        <p className="mt-1.5 max-w-md text-[15px] leading-relaxed text-[#B9C4D1]">
-                          {s.text}
-                        </p>
-                      </div>
+                    </span>
+                    <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                      {s.title}
+                    </h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-[#B9C4D1]">
+                      {s.text}
+                    </p>
+                  </li>
+                  {i < STEPS.length - 1 && (
+                    <li aria-hidden className="flex shrink-0 items-center text-[#8FB6FF]">
+                      <ChevronRight size={24} className="rotate-90 md:rotate-0" />
                     </li>
-                  </Reveal>
-                ))}
-              </ol>
-            </section>
-          </FeatureTour>
-        </div>
+                  )}
+                </Reveal>
+              ))}
+            </ol>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-[#1E2733]">

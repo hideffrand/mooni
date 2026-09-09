@@ -184,7 +184,7 @@ export default function MooniPhone({ focus }: { focus?: { target: DemoTarget; no
 
         {/* screen */}
         <div
-          className="relative flex h-[744px] w-[360px] flex-col overflow-hidden rounded-[36px]"
+          className="relative flex h-[640px] w-[310px] flex-col overflow-hidden rounded-[36px]"
           style={{ backgroundColor: colors.background }}
         >
           {/* status bar */}

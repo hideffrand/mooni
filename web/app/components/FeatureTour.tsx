@@ -124,10 +124,10 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
 
       {/* right: the live phone. Sticky on the grid item itself (its containing
           block = the grid area above, spanning both sections). */}
-      <Reveal className="order-first w-full self-start lg:order-none lg:sticky lg:top-10 lg:shrink-0">
+      <Reveal className="order-first w-full self-start lg:order-none lg:sticky lg:top-2 lg:shrink-0">
         <div
           ref={phoneRef}
-          className="flex scroll-mt-24 flex-col items-center gap-4 pt-6 lg:pt-24"
+          className="flex scroll-mt-24 flex-col items-center gap-4 pt-6 lg:pt-8"
         >
           <MooniPhone focus={focus} />
           <div className="flex items-center gap-2 text-xs text-[#77879A]">
