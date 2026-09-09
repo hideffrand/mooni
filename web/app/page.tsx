@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
-import {
-  Activity,
-  BellRing,
-  Download,
-  FolderOpen,
-  Images,
-  Power,
-  QrCode,
-} from "lucide-react";
+import { Download } from "lucide-react";
 import StatsWidget from "@/app/components/StatsWidget";
+import FeatureTour from "@/app/components/FeatureTour";
 import Reveal from "@/app/components/Reveal";
-import { ConstellationField, SignalLink, QRScan } from "@/app/components/Illustrations";
+import { ConstellationField, SignalLink } from "@/app/components/Illustrations";
 
 const GITHUB_URL = "https://github.com/hideffrand/mooni";
 const APK_URL = "/mooni.apk";
@@ -33,47 +26,6 @@ export const metadata: Metadata = {
     images: ["/mooni-hero.jpg"],
   },
 };
-
-type Feature = {
-  icon: typeof FolderOpen;
-  title: string;
-  text: string;
-  illustration?: "qr";
-};
-
-const FEATURES: Feature[] = [
-  {
-    icon: FolderOpen,
-    title: "File manager",
-    text: "Grab a file without getting up. Browse, upload, rename, move, or delete — photos and videos get thumbnails, everything else gets a colored tag so you know what it is at a glance.",
-  },
-  {
-    icon: Images,
-    title: "Media library",
-    text: "Your server's photos, in your pocket. A day-by-day timeline over a folder you choose, with pinch-to-zoom, albums, and upload straight from your camera roll.",
-  },
-  {
-    icon: Activity,
-    title: "System health",
-    text: "Know before it's a problem. CPU, memory, disk, load, and temperature, read straight from the machine and refreshed while you're looking at it.",
-  },
-  {
-    icon: BellRing,
-    title: "Threshold alerts",
-    text: "Set a limit once, then forget about it. Cross it, and your phone buzzes — a single notification with a cooldown, not a flood.",
-  },
-  {
-    icon: Power,
-    title: "Power control",
-    text: "Reboot, shut down, or lock the screen from wherever you are. A confirm step and your fingerprint sit between you and a stray tap.",
-  },
-  {
-    icon: QrCode,
-    title: "QR pairing",
-    text: "One scan, no typing. Point your camera at the code the agent shows you, and keep as many servers paired as you run.",
-    illustration: "qr",
-  },
-];
 
 const STEPS = [
   {
@@ -254,84 +206,46 @@ export default function Home() {
           </div>
         </section>
 
-        <section
-          id="features"
-          className="mx-auto max-w-3xl border-t border-[#1E2733] px-6 py-24"
-        >
-          <Reveal>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
-              Everything, without leaving your phone
-            </h2>
-            <p className="mt-3 max-w-md text-[#77879A]">
-              One agent on your server, one app on your phone, nothing else
-              in between.
-            </p>
-          </Reveal>
-
-          <div className="mt-8">
-            {FEATURES.map((f) => (
-              <Reveal key={f.title}>
-                <div className="group flex items-center gap-5 rounded-xl border-b border-[#1E2733] px-2 py-8 transition-colors duration-200 last:border-none hover:bg-[#101620]">
-                  {f.illustration === "qr" ? (
-                    <QRScan className="shrink-0 transition-transform duration-300 group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1E2733] text-[#8FB6FF] transition-all duration-300 group-hover:scale-110 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
-                      <f.icon size={19} strokeWidth={2} />
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
-                      {f.title}
-                    </h3>
-                    <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[#B9C4D1]">
-                      {f.text}
-                    </p>
-                  </div>
-                </div>
+        <div className="mx-auto border-t border-[#1E2733]">
+          <FeatureTour>
+            <section id="how-it-works" className="mx-auto max-w-3xl py-24">
+              <Reveal>
+                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
+                  Set up in three steps
+                </h2>
+                <p className="mt-3 max-w-md text-[#77879A]">
+                  No IPs, no exposed ports, no key you have to type in by hand.
+                </p>
               </Reveal>
-            ))}
-          </div>
-        </section>
 
-        <section
-          id="how-it-works"
-          className="mx-auto max-w-3xl px-6 py-24"
-        >
-          <Reveal>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
-              Set up in three steps
-            </h2>
-            <p className="mt-3 max-w-md text-[#77879A]">
-              No IPs, no exposed ports, no key you have to type in by hand.
-            </p>
-          </Reveal>
-
-          <ol className="mt-10">
-            {STEPS.map((s, i) => (
-              <Reveal key={s.title}>
-                <li className="group relative flex gap-6 pb-10 last:pb-0">
-                  {i < STEPS.length - 1 && (
-                    <span
-                      aria-hidden
-                      className="absolute left-4 top-9 h-[calc(100%-2rem)] w-px bg-[#1E2733]"
-                    />
-                  )}
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#1E2733] font-[family-name:var(--font-heading)] text-sm text-[#8FB6FF] transition-all duration-300 group-hover:scale-110 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
-                    {i + 1}
-                  </span>
-                  <div className="pt-0.5">
-                    <h3 className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
-                      {s.title}
-                    </h3>
-                    <p className="mt-1.5 max-w-md text-[15px] leading-relaxed text-[#B9C4D1]">
-                      {s.text}
-                    </p>
-                  </div>
-                </li>
-              </Reveal>
-            ))}
-          </ol>
-        </section>
+              <ol className="mt-10">
+                {STEPS.map((s, i) => (
+                  <Reveal key={s.title}>
+                    <li className="group relative flex gap-6 pb-10 last:pb-0">
+                      {i < STEPS.length - 1 && (
+                        <span
+                          aria-hidden
+                          className="absolute left-4 top-9 h-[calc(100%-2rem)] w-px bg-[#1E2733]"
+                        />
+                      )}
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#1E2733] font-[family-name:var(--font-heading)] text-sm text-[#8FB6FF] transition-all duration-300 group-hover:scale-110 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
+                        {i + 1}
+                      </span>
+                      <div className="pt-0.5">
+                        <h3 className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                          {s.title}
+                        </h3>
+                        <p className="mt-1.5 max-w-md text-[15px] leading-relaxed text-[#B9C4D1]">
+                          {s.text}
+                        </p>
+                      </div>
+                    </li>
+                  </Reveal>
+                ))}
+              </ol>
+            </section>
+          </FeatureTour>
+        </div>
       </main>
 
       <footer className="border-t border-[#1E2733]">
