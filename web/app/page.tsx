@@ -111,29 +111,29 @@ export default function Home() {
       `}</style>
 
       <header className="border-b border-[#1E2733]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <span className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
+          <span className="shrink-0 font-[family-name:var(--font-heading)] text-base text-[#E7EEFC] sm:text-lg">
             mooni<span className="text-[#8FB6FF]">.</span>
           </span>
           <nav
-            className="flex items-center gap-8 text-sm text-[#B9C4D1]"
+            className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs text-[#B9C4D1] sm:gap-x-8 sm:text-sm"
             aria-label="Primary"
           >
             <a
               href="#features"
-              className="rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
             >
               Features
             </a>
             <a
               href="#how-it-works"
-              className="rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
             >
               How it works
             </a>
             <a
               href="#install"
-              className="rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
             >
               Install
             </a>
@@ -141,9 +141,9 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="flex items-center gap-2 rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
             >
-              <GitHubIcon /> GitHub
+              <GitHubIcon /> <span className="hidden sm:inline">GitHub</span>
             </a>
           </nav>
         </div>
