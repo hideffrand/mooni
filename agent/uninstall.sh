@@ -8,7 +8,19 @@ set -euo pipefail
 CONFIG_DIR="$HOME/.mooni"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_PATH="$SCRIPT_DIR/mooni-backend"
+
+# Locate the binary across both layouts: next to this script (repo checkout),
+# else in the curl installer's default bin dir, else on PATH.
+BIN_PATH=""
+for cand in "$SCRIPT_DIR/mooni-backend" "$HOME/.local/bin/mooni-backend"; do
+  if [[ -x "$cand" ]]; then
+    BIN_PATH="$cand"
+    break
+  fi
+done
+if [[ -z "$BIN_PATH" ]] && command -v mooni-backend >/dev/null 2>&1; then
+  BIN_PATH="$(command -v mooni-backend)"
+fi
 SERVICE_NAME="mooni-backend"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -101,8 +113,8 @@ else
   echo "No storage folder configured."
 fi
 
-# 4. Remove the config folder (API key + saved pairing codes) - this is what
-#    "unpairs" the phones.
+# 4. Remove the config folder (API key + saved pairing codes + the installed
+#    setup.sh) - this is what "unpairs" the phones.
 say "4/4 Remove the config folder"
 if [[ -d "$CONFIG_DIR" ]]; then
   if confirm "Remove $CONFIG_DIR (config + API key + saved pairing codes)?" "Y/n"; then

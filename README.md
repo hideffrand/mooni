@@ -45,14 +45,19 @@ your phone is connected - no IPs, no API keys to type.
 
 ### 1. Set up the agent (on your server)
 
+Install with one command (downloads a prebuilt binary and runs the interactive
+setup):
+
 ```bash
-cd agent
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/hideffrand/mooni/main/agent/install.sh | bash
 ```
 
-The script walks you through everything: picks the folder the app may
+The setup script walks you through everything: picks the folder the app may
 access, generates a secret key, optionally allows reboot/shutdown from the
 app, and finishes by printing a **QR code + pairing code** in your terminal.
+
+Alternatives: clone the repo and run `bash agent/install.sh` (builds from
+source), or build manually - see `agent/README.md`.
 
 Redis is optional but nice-to-have: if a Redis server is running, add
 `MOONI_REDIS_ADDR=127.0.0.1:6379` (and optionally `MOONI_REDIS_PASSWORD`) to
@@ -93,8 +98,8 @@ health.
 ### Remove the agent (on your server)
 
 ```bash
-cd agent
-./uninstall.sh
+bash ~/.mooni/bin/uninstall.sh   # curl-installed
+# or: cd agent && ./uninstall.sh  # from a checkout
 ```
 
 It stops the service, deletes the program, and removes the config (API key)

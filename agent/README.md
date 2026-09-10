@@ -9,20 +9,44 @@ small one, `go build` on your laptop stays as simple as usual (Go downloads it
 once and caches it locally, as long as there's internet during the first
 build).
 
-## Quick Setup (one script does everything)
+## Quick Setup (curl)
+
+The default way to install the agent - one line, downloads a prebuilt binary
+from GitHub Releases and runs the interactive setup:
 
 ```bash
-cd agent
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/hideffrand/mooni/main/agent/install.sh | bash
 ```
 
-This script automatically:
-- Install Go via `apt` if it's missing (asks for permission first)
-- Generates a random API key
+`install.sh` is a non-interactive bootstrap (safe for `curl | bash`): it
+downloads the binary for your platform (linux amd64/arm64), verifies its
+sha256 checksum, installs it to `~/.local/bin`, and copies the interactive
+setup script to `~/.mooni/bin/setup.sh`. It then runs that setup script for
+you so you can go through the prompts immediately. Run it alone anytime with:
+
+```bash
+bash ~/.mooni/bin/setup.sh
+```
+
+Optional bootstrap flags:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hideffrand/mooni/main/agent/install.sh \
+  | bash -s -- --bin-dir /usr/local/bin   # system-wide (run as root/sudo)
+```
+
+- `--bin-dir <dir>` - install the binary here (default `~/.local/bin`)
+- `--version <tag>` - install a specific release tag (default `latest`)
+- `--setup <auto|skip>` - run the interactive setup at the end (default `auto`)
+
+If you run `install.sh` from a clone of the repo it detects the checkout and
+builds from source instead of downloading (see "Install paths" below).
+
+The setup script (`setup.sh`) walks you through everything:
 - Asks which folder the app is allowed to manage - it suggests common folders
   it found on your system (Documents, Downloads, Pictures, …) as numbered
   options, or you can type any custom path
-- Builds the binary
+- Generates a random API key
 - Detects the IP (Tailscale first, otherwise the LAN IP automatically)
 - Optionally installs it as a systemd service (auto-start on boot)
 - Optionally grants **passwordless sudo for just `systemctl reboot`,
@@ -68,7 +92,7 @@ Want to give access to another phone (e.g. family)? Regenerate anytime without
 re-running the setup:
 
 ```bash
-source ~/.mooni/config.env && ./mooni-backend -pair -name "Family Phone"
+source ~/.mooni/config.env && mooni-backend -pair -name "Family Phone"
 ```
 
 ## API Features
@@ -294,11 +318,12 @@ sudo systemctl status mooni-backend
 
 ## Uninstall
 
-Quick way - run the companion script from the `agent/` folder:
+Run the companion script - either from the `agent/` folder of a checkout, or
+the copy the curl installer put at `~/.mooni/bin/uninstall.sh`:
 
 ```bash
-cd agent
-./uninstall.sh
+bash ~/.mooni/bin/uninstall.sh   # curl-installed
+# or: cd agent && ./uninstall.sh  # from a checkout
 ```
 
 It removes, in order:
@@ -306,9 +331,10 @@ It removes, in order:
    `/etc/systemd/system/mooni-backend.service` (skipped if never installed).
 2. **Power-control sudoers rule** - removes `/etc/sudoers.d/mooni-power`
    (the passwordless-sudo rule that powered the Reboot/Shutdown buttons).
-3. **Built binary** - `agent/mooni-backend`.
-4. **Config folder** `~/.mooni/` - API key + saved pairing codes (this is
-   what un-pairs the phones).
+3. **Built binary** - resolved automatically (next to the script, in
+   `~/.local/bin`, or on PATH).
+4. **Config folder** `~/.mooni/` - API key + saved pairing codes + the
+   installed `setup.sh`/`uninstall.sh` (this is what un-pairs the phones).
 
 **Your files are untouched by default.** The script lists the paired storage
 folder and asks, by number, whether to keep the files or delete them too:
