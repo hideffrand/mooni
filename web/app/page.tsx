@@ -4,6 +4,7 @@ import { ChevronRight, Download } from "lucide-react";
 import StatsWidget from "@/app/components/StatsWidget";
 import FeatureTour from "@/app/components/FeatureTour";
 import Reveal from "@/app/components/Reveal";
+import InstallCommand from "@/app/components/InstallCommand";
 import { ConstellationField, SignalLink } from "@/app/components/Illustrations";
 
 const GITHUB_URL = "https://github.com/hideffrand/mooni";
@@ -39,6 +40,21 @@ const STEPS = [
   {
     title: "Scan and pair",
     text: "Point your camera at the QR code the agent shows you. That's it — you're connected.",
+  },
+];
+
+const INSTALL_STEPS = [
+  {
+    title: "Run the command",
+    text: "Paste the one-liner above into your server's terminal. It downloads the agent for your architecture and verifies the checksum.",
+  },
+  {
+    title: "Answer a few prompts",
+    text: "Pick the folder the app may manage, choose a port and a name. It generates the API key and, optionally, enables reboot/shutdown.",
+  },
+  {
+    title: "Scan the QR",
+    text: "The agent finishes by printing a QR code and pairing code. Open the app, scan it, and your server appears.",
   },
 ];
 
@@ -114,6 +130,12 @@ export default function Home() {
               className="rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
             >
               How it works
+            </a>
+            <a
+              href="#install"
+              className="rounded-sm transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+            >
+              Install
             </a>
             <a
               href={GITHUB_URL}
@@ -254,6 +276,57 @@ export default function Home() {
                 </Reveal>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section id="install" className="border-t border-[#1E2733]">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <Reveal>
+              <div className="mx-auto max-w-xl text-center">
+                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
+                  Install the agent in one line
+                </h2>
+                <p className="mt-3 text-[#77879A]">
+                  Run this on your Linux server. It downloads the agent, verifies
+                  it, and starts the interactive setup for you.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal className="mx-auto mt-10 max-w-2xl">
+              <InstallCommand />
+              <p className="mt-3 text-center text-sm text-[#77879A]">
+                No Go, no compilation. Linux amd64 and arm64. Skip it with a
+                command? It&apos;s in the{" "}
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#8FB6FF] hover:underline"
+                >
+                  README
+                </a>
+                .
+              </p>
+            </Reveal>
+
+            <div className="mt-16 grid gap-8 md:grid-cols-3">
+              {INSTALL_STEPS.map((s, i) => (
+                <Reveal key={s.title}>
+                  <div className="flex h-full flex-col rounded-2xl border border-[#1E2733] bg-[#101620]/60 p-6">
+                    <span className="font-[family-name:var(--font-heading)] text-sm text-[#8FB6FF]">
+                      {i + 1}
+                    </span>
+                    <h3 className="mt-3 font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                      {s.title}
+                    </h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-[#B9C4D1]">
+                      {s.text}
+                    </p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </section>
       </main>
