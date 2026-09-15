@@ -5,6 +5,55 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* "Neon Mint on Slate" — dark by default; [data-theme="light"] flips it.
+   Mirrors mobile/src/context/ThemeContext.tsx. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --card: #151b23;
+  --card-soft: rgba(21, 27, 35, 0.6);
+  --card-2: #182029;
+  --border: #222b36;
+  --text: #e6edf3;
+  --text-2: #9ba8b5;
+  --text-3: #708091;
+  --accent: #3df2a6;
+  --accent-2: #7c8bff;
+  --accent-3: #ff8a5c;
+  --cta: #3df2a6;
+  --cta-hover: #6bf5bc;
+  --on-accent: #06251a;
+  --widget-glow: rgba(61, 242, 166, 0.16);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f9fa;
+  --card: #ffffff;
+  --card-soft: rgba(255, 255, 255, 0.6);
+  --card-2: #eff3f6;
+  --border: #dce3ea;
+  --text: #171b1f;
+  --text-2: #4a5560;
+  --text-3: #6e7a86;
+  --accent: #0b8f63;
+  --accent-2: #5b6bff;
+  --accent-3: #e8734a;
+  --cta: #0b8f63;
+  --cta-hover: #0a9d6d;
+  --on-accent: #ffffff;
+  --widget-glow: rgba(11, 143, 99, 0.12);
+}
+
+/* Feature-tour icon accents cycle mint / periwinkle / coral; the parent
+   .group hover fills the circle with that row's color. */
+.ftx-0 { color: var(--accent); }
+.ftx-1 { color: var(--accent-2); }
+.ftx-2 { color: var(--accent-3); }
+.group:hover .ftx-0 { background-color: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.group:hover .ftx-1 { background-color: var(--accent-2); border-color: var(--accent-2); color: var(--on-accent); }
+.group:hover .ftx-2 { background-color: var(--accent-3); border-color: var(--accent-3); color: var(--on-accent); }
+
 /* Scroll-driven reveal: content is always visible by default; the fade-up
    animation only runs in browsers that support scroll timelines and only
    when the user allows motion. No JS involved — content can't get stuck

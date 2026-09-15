@@ -26,18 +26,18 @@ export default function InstallCommand() {
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-[#1E2733] bg-[#101620]/80 px-4 py-3">
-      <code className="flex-1 break-all font-mono text-[13px] leading-relaxed text-[#E7EEFC]">
-        <span className="select-none text-[#8FB6FF]">$ </span>
+    <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-soft)] px-4 py-3">
+      <code className="flex-1 break-all font-mono text-[13px] leading-relaxed text-[var(--text)]">
+        <span className="select-none text-[var(--accent-2)]">$ </span>
         {command}
       </code>
       <button
         onClick={copy}
         aria-label="Copy install command"
-        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#1E2733] px-3 py-1.5 text-xs text-[#B9C4D1] transition-colors hover:border-[#8FB6FF] hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8FB6FF]"
+        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
       >
         {copied ? (
-          <Check size={14} className="text-[#7FE3A1]" />
+          <Check size={14} className="text-[var(--accent)]" />
         ) : (
           <Copy size={14} />
         )}

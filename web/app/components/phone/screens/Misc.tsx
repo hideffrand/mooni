@@ -298,7 +298,7 @@ export function ScanQRScreen() {
             <span key={cls} className={`absolute h-10 w-10 border-[#8FB6FF] ${cls}`} />
           ))}
           {/* scan beam (uses the page's keyframes) */}
-          <span className="scan-beam absolute left-6 right-6 h-0.5 rounded bg-[#8FB6FF]" />
+          <span className="scan-beam absolute left-6 right-6 h-0.5 rounded bg-[var(--accent-2)]" />
 
           <div className="absolute bottom-5 left-0 right-0 text-center text-xs text-white/60">
             Point the camera at the code shown by the agent

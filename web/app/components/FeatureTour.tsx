@@ -82,34 +82,36 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
       <div className="min-w-0 order-last lg:order-none">
         <section id="features" className="py-24">
           <Reveal>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[var(--text)]">
               Everything, without leaving your phone
             </h2>
-            <p className="mt-3 max-w-md text-[#77879A]">
+            <p className="mt-3 max-w-md text-[var(--text-3)]">
               One agent on your server, one app on your phone, nothing else
               in between. Click a feature — the phone follows along.
             </p>
           </Reveal>
 
           <div className="mt-8">
-            {FEATURES.map((f) => (
+            {FEATURES.map((f, i) => (
               <Reveal key={f.title}>
                 <button
                   onClick={() => go(f.demo)}
-                  className="group flex w-full items-center gap-5 rounded-xl border-b border-[#1E2733] px-2 py-8 text-left transition-colors duration-200 last:border-none hover:bg-[#101620]"
+                  className="group flex w-full items-center gap-5 rounded-xl border-b border-[var(--border)] px-2 py-8 text-left transition-colors duration-200 last:border-none hover:bg-[var(--card)]"
                 >
                   {f.illustration === "qr" ? (
                     <QRScan className="shrink-0 transition-transform duration-300 group-hover:scale-105" />
                   ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1E2733] text-[#8FB6FF] transition-all duration-300 group-hover:scale-110 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
+                    <div
+                      className={`ftx-${i % 3} flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] transition-all duration-300 group-hover:scale-110`}
+                    >
                       <f.icon size={19} strokeWidth={2} />
                     </div>
                   )}
                   <div>
-                    <h3 className="font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                    <h3 className="font-[family-name:var(--font-heading)] text-lg text-[var(--text)]">
                       {f.title}
                     </h3>
-                    <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[#B9C4D1]">
+                    <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[var(--text-2)]">
                       {f.text}
                     </p>
                   </div>
@@ -130,10 +132,10 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
           className="flex scroll-mt-24 flex-col items-center gap-4 pt-6 lg:pt-8"
         >
           <MooniPhone focus={focus} />
-          <div className="flex items-center gap-2 text-xs text-[#77879A]">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8FB6FF] opacity-60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#8FB6FF]" />
+          <div className="flex items-center gap-2 text-xs text-[var(--text-3)]">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-2)] opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--accent-2)]" />
             </span>
             Interactive demo — the real app UI, mock data. Go ahead, tap around.
           </div>

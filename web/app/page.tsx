@@ -6,6 +6,7 @@ import FeatureTour from "@/app/components/FeatureTour";
 import Reveal from "@/app/components/Reveal";
 import InstallCommand from "@/app/components/InstallCommand";
 import { ConstellationField, SignalLink } from "@/app/components/Illustrations";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 const GITHUB_URL = "https://github.com/hideffrand/mooni";
 const APK_URL = "/mooni.apk";
@@ -68,7 +69,7 @@ function GitHubIcon({ size = 16 }: { size?: number }) {
 
 export default function Home() {
   return (
-    <div className={`${heading.variable} bg-[#0B0F14] font-sans antialiased`}>
+    <div className={`${heading.variable} bg-[var(--bg)] font-sans antialiased`}>
       <style>{`
         .twinkle { opacity: 0.9; }
         .dash-move { }
@@ -110,30 +111,30 @@ export default function Home() {
         }
       `}</style>
 
-      <header className="border-b border-[#1E2733]">
+      <header className="border-b border-[var(--border)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
-          <span className="shrink-0 font-[family-name:var(--font-heading)] text-base text-[#E7EEFC] sm:text-lg">
-            mooni<span className="text-[#8FB6FF]">.</span>
+          <span className="shrink-0 font-[family-name:var(--font-heading)] text-base text-[var(--text)] sm:text-lg">
+            mooni<span className="text-[var(--accent)]">.</span>
           </span>
           <nav
-            className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs text-[#B9C4D1] sm:gap-x-8 sm:text-sm"
+            className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs text-[var(--text-2)] sm:gap-x-8 sm:text-sm"
             aria-label="Primary"
           >
             <a
               href="#features"
-              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
             >
               Features
             </a>
             <a
               href="#how-it-works"
-              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
             >
               How it works
             </a>
             <a
               href="#install"
-              className="rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="rounded-sm py-1 transition-colors hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
             >
               Install
             </a>
@@ -141,10 +142,11 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-sm py-1 transition-colors hover:text-[#E7EEFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+              className="flex items-center gap-2 rounded-sm py-1 transition-colors hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
             >
               <GitHubIcon /> <span className="hidden sm:inline">GitHub</span>
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>
@@ -155,18 +157,18 @@ export default function Home() {
 
           <div className="relative z-10">
             <div
-              className="fade-up mb-6 flex items-center gap-2 text-sm text-[#8FB6FF]"
+              className="fade-up mb-6 flex items-center gap-2 text-sm text-[var(--accent)]"
               style={{ animationDelay: "0ms" }}
             >
               <span className="relative flex h-1.5 w-1.5">
-                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8FB6FF] opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#8FB6FF]" />
+                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-2)] opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--accent-2)]" />
               </span>
               Reaches your server only over Tailscale
             </div>
 
             <h1
-              className="fade-up font-[family-name:var(--font-heading)] text-3xl leading-[1.1] tracking-tight text-[#E7EEFC] sm:text-4xl lg:text-5xl"
+              className="fade-up font-[family-name:var(--font-heading)] text-3xl leading-[1.1] tracking-tight text-[var(--text)] sm:text-4xl lg:text-5xl"
               style={{ animationDelay: "90ms" }}
             >
               Your server never sleeps.
@@ -175,7 +177,7 @@ export default function Home() {
             </h1>
 
             <p
-              className="fade-up mt-4 max-w-md text-base leading-relaxed text-[#B9C4D1]"
+              className="fade-up mt-4 max-w-md text-base leading-relaxed text-[var(--text-2)]"
               style={{ animationDelay: "180ms" }}
             >
               Mooni is a companion app for the Linux machine you already run —
@@ -190,7 +192,7 @@ export default function Home() {
               <a
                 href={APK_URL}
                 download
-                className="flex items-center gap-2 rounded-full bg-[#FFB067] px-6 py-3 text-sm font-medium text-[#1A1204] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#FFC08A] active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+                className="flex items-center gap-2 rounded-full bg-[var(--cta)] px-6 py-3 text-sm font-medium text-[var(--on-accent)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--cta-hover)] active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
               >
                 <Download size={16} strokeWidth={2.4} />
                 Download for Android
@@ -199,14 +201,14 @@ export default function Home() {
                 href={GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-full border border-[#1E2733] px-6 py-3 text-sm text-[#B9C4D1] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8FB6FF] hover:text-[#E7EEFC] active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8FB6FF]"
+                className="flex items-center gap-2 rounded-full border border-[var(--border)] px-6 py-3 text-sm text-[var(--text-2)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent-2)] hover:text-[var(--text)] active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
               >
                 <GitHubIcon /> View the code
               </a>
             </div>
 
             <p
-              className="fade-up mt-5 text-sm text-[#77879A]"
+              className="fade-up mt-5 text-sm text-[var(--text-3)]"
               style={{ animationDelay: "340ms" }}
             >
               Needs the Mooni agent running on your server and Tailscale on
@@ -221,25 +223,25 @@ export default function Home() {
             <StatsWidget />
             <div className="flex flex-col items-center gap-2 opacity-80">
               <SignalLink />
-              <span className="text-xs text-[#77879A]">
+              <span className="text-xs text-[var(--text-3)]">
                 your machine ⇄ your pocket, over Tailscale
               </span>
             </div>
           </div>
         </section>
 
-        <div className="mx-auto border-t border-[#1E2733]">
+        <div className="mx-auto border-t border-[var(--border)]">
           <FeatureTour />
         </div>
 
-        <section id="how-it-works" className="border-t border-[#1E2733]">
+        <section id="how-it-works" className="border-t border-[var(--border)]">
           <div className="mx-auto max-w-6xl px-6 py-24">
             <Reveal>
               <div className="mx-auto max-w-xl text-center">
-                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
+                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[var(--text)]">
                   Set up in three steps
                 </h2>
-                <p className="mt-3 text-[#77879A]">
+                <p className="mt-3 text-[var(--text-3)]">
                   No IPs, no exposed ports, no key you have to type in by hand.
                 </p>
               </div>
@@ -251,25 +253,25 @@ export default function Home() {
                   key={s.title}
                   className="flex w-full flex-col items-center gap-6 md:flex-1 md:flex-row md:items-center md:gap-3"
                 >
-                  <li className="group flex w-full max-w-sm flex-1 flex-col items-center rounded-2xl border border-[#1E2733] bg-[#101620]/60 px-6 py-8 text-center transition-colors duration-200 hover:border-[#8FB6FF]/40">
+                  <li className="group flex w-full max-w-sm flex-1 flex-col items-center rounded-2xl border border-[var(--border)] bg-[var(--card-soft)] px-6 py-8 text-center transition-colors duration-200 hover:border-[var(--accent)]/40">
                     <span className="relative flex h-14 w-14 items-center justify-center">
                       <span
                         aria-hidden
-                        className="absolute inline-flex h-full w-full rounded-full bg-[#8FB6FF]/10 transition-transform duration-300 group-hover:scale-110"
+                        className="absolute inline-flex h-full w-full rounded-full bg-[var(--accent)]/10 transition-transform duration-300 group-hover:scale-110"
                       />
-                      <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#8FB6FF]/50 font-[family-name:var(--font-heading)] text-lg text-[#8FB6FF] transition-all duration-300 group-hover:border-[#8FB6FF] group-hover:bg-[#8FB6FF] group-hover:text-[#0B0F14]">
+                      <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[var(--accent)]/50 font-[family-name:var(--font-heading)] text-lg text-[var(--accent)] transition-all duration-300 group-hover:border-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)]">
                         {i + 1}
                       </span>
                     </span>
-                    <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                    <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg text-[var(--text)]">
                       {s.title}
                     </h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-[#B9C4D1]">
+                    <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-2)]">
                       {s.text}
                     </p>
                   </li>
                   {i < STEPS.length - 1 && (
-                    <li aria-hidden className="flex shrink-0 items-center text-[#8FB6FF]">
+                    <li aria-hidden className="flex shrink-0 items-center text-[var(--accent)]">
                       <ChevronRight size={24} className="rotate-90 md:rotate-0" />
                     </li>
                   )}
@@ -279,14 +281,14 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="install" className="border-t border-[#1E2733]">
+        <section id="install" className="border-t border-[var(--border)]">
           <div className="mx-auto max-w-6xl px-6 py-24">
             <Reveal>
               <div className="mx-auto max-w-xl text-center">
-                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[#E7EEFC]">
+                <h2 className="font-[family-name:var(--font-heading)] text-3xl text-[var(--text)]">
                   Install the agent in one line
                 </h2>
-                <p className="mt-3 text-[#77879A]">
+                <p className="mt-3 text-[var(--text-3)]">
                   Run this on your Linux server. It downloads the agent, verifies
                   it, and starts the interactive setup for you.
                 </p>
@@ -295,14 +297,14 @@ export default function Home() {
 
             <Reveal className="mx-auto mt-10 max-w-2xl">
               <InstallCommand />
-              <p className="mt-3 text-center text-sm text-[#77879A]">
+              <p className="mt-3 text-center text-sm text-[var(--text-3)]">
                 No Go, no compilation. Linux amd64 and arm64. Skip it with a
                 command? It&apos;s in the{" "}
                 <a
                   href={GITHUB_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#8FB6FF] hover:underline"
+                  className="text-[var(--accent)] hover:underline"
                 >
                   README
                 </a>
@@ -313,14 +315,14 @@ export default function Home() {
             <div className="mt-16 grid gap-8 md:grid-cols-3">
               {INSTALL_STEPS.map((s, i) => (
                 <Reveal key={s.title}>
-                  <div className="flex h-full flex-col rounded-2xl border border-[#1E2733] bg-[#101620]/60 p-6">
-                    <span className="font-[family-name:var(--font-heading)] text-sm text-[#8FB6FF]">
+                  <div className="flex h-full flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-soft)] p-6">
+                    <span className="font-[family-name:var(--font-heading)] text-sm text-[var(--accent)]">
                       {i + 1}
                     </span>
-                    <h3 className="mt-3 font-[family-name:var(--font-heading)] text-lg text-[#E7EEFC]">
+                    <h3 className="mt-3 font-[family-name:var(--font-heading)] text-lg text-[var(--text)]">
                       {s.title}
                     </h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-[#B9C4D1]">
+                    <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-2)]">
                       {s.text}
                     </p>
                   </div>
@@ -331,17 +333,17 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-[#1E2733]">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-6 py-8 text-sm text-[#77879A] sm:flex-row sm:items-center">
+      <footer className="border-t border-[var(--border)]">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-6 py-8 text-sm text-[var(--text-3)] sm:flex-row sm:items-center">
           <span>
-            mooni<span className="text-[#8FB6FF]">.</span> — your server, in
+            mooni<span className="text-[var(--accent)]">.</span> — your server, in
             your pocket.
           </span>
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 transition-colors hover:text-[#E7EEFC]"
+            className="flex items-center gap-2 transition-colors hover:text-[var(--text)]"
           >
             <GitHubIcon /> GitHub
           </a>
