@@ -28,10 +28,18 @@ module.exports = function withPlayCompatibility(config) {
     }
 
     const usesPermission = manifest.manifest["uses-permission"] || [];
+    const existingNames = new Set(
+      usesPermission
+        .filter((p) => p.$ && p.$["tools:node"] === "remove")
+        .map((p) => p.$["android:name"])
+    );
+
     for (const name of REMOVE_PERMISSIONS) {
-      usesPermission.push({
-        $: { "android:name": name, "tools:node": "remove" },
-      });
+      if (!existingNames.has(name)) {
+        usesPermission.push({
+          $: { "android:name": name, "tools:node": "remove" },
+        });
+      }
     }
     manifest.manifest["uses-permission"] = usesPermission;
     return config;

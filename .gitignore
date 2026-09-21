@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.*
 *.pem
+*-service-account.json
+*.keystore
 
 # --- builds / output ---
 .next/

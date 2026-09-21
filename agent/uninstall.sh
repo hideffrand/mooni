@@ -24,7 +24,64 @@ fi
 SERVICE_NAME="mooni-backend"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
-say() { printf '\n=== %s ===\n' "$1"; }
+# Colors strip automatically when stdout isn't a terminal (piped output,
+# logs, CI) or when NO_COLOR is set.
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  BOLD=$'\e[1m'; DIM=$'\e[2m'
+  CYAN=$'\e[36m'; YELLOW=$'\e[33m'; GREEN=$'\e[32m'; RED=$'\e[31m'
+  RESET=$'\e[0m'
+else
+  BOLD=""; DIM=""; CYAN=""; YELLOW=""; GREEN=""; RED=""; RESET=""
+fi
+
+say() { printf '\n%s%s── %s ──%s\n' "$CYAN" "$BOLD" "$1" "$RESET"; }
+ok() { printf '%s%s✓%s %s\n' "$GREEN" "$BOLD" "$RESET" "$1"; }
+warn() { printf '%s%s!%s %s\n' "$YELLOW" "$BOLD" "$RESET" "$1"; }
+err() { printf '%s%s✗ %s%s\n' "$RED" "$BOLD" "$1" "$RESET" >&2; }
+dim() { printf '%s%s%s\n' "$DIM" "$1" "$RESET"; }
+
+# Renders the banner two-tone: solid blocks get BT (bold color), all
+# other glyphs get DT (dim). Char-by-char so UTF-8 is handled correctly.
+_render_art() {
+  local line out prev t i c
+  while IFS= read -r line; do
+    out=""; prev="s"
+    for ((i=0; i<${#line}; i++)); do
+      c="${line:i:1}"
+      case "$c" in
+        █) t="b" ;;
+        " ") t="$prev" ;;
+        *) t="d" ;;
+      esac
+      if [[ "$t" != "$prev" ]]; then
+        [[ "$t" == "b" ]] && out+="$BT" || out+="$DT"
+        prev="$t"
+      fi
+      out+="$c"
+    done
+    printf '%s%s\n' "$out" "$RESET"
+  done <<< "$1"
+}
+
+banner() {
+  printf '\n'
+  local art
+  art=$(cat <<'EOF'
+███╗   ███╗ ██████╗  ██████╗  ██████╗ ███╗   ██╗██╗
+████╗ ████║██╔═══██╗██╔═══██╗██╔═══██╗████╗  ██║██║
+██╔████╔██║██║   ██║██║   ██║██║   ██║██╔██╗ ██║██║
+██║╚██╔╝██║██║   ██║██║   ██║██║   ██║██║╚██╗██║██║
+██║ ╚═╝ ██║╚██████╔╝╚██████╔╝╚██████╔╝██║ ╚████║██║
+╚═╝     ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚═╝
+EOF
+)
+  if [[ -n "$CYAN" ]]; then
+    BT="$BOLD$RED" DT="$DIM" _render_art "$art"
+  else
+    printf '%s\n' "$art"
+  fi
+  dim "  uninstaller"
+}
 
 confirm() {
   local prompt="$1" default="$2" ans def
@@ -48,8 +105,7 @@ if [[ -f "$CONFIG_FILE" ]]; then
   STORAGE_DIR="${MOONI_ROOT_DIR:-}"
 fi
 
-echo "Mooni Agent - Uninstall"
-echo "========================="
+banner
 
 # 1. Stop & remove the systemd service
 say "1/4 Stop & remove the systemd service"
@@ -58,24 +114,24 @@ if systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE_NAME}\."; then
   sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
   sudo rm -f "$SERVICE_FILE"
   sudo systemctl daemon-reload
-  echo "systemd service removed."
+  ok "systemd service removed."
 else
-  echo "No systemd service installed - nothing to do."
+  dim "No systemd service installed - nothing to do."
 fi
 
 # Remove the passwordless-sudo rule that powered the app's Reboot/Shutdown.
 if [[ -f /etc/sudoers.d/mooni-power ]]; then
   sudo rm -f /etc/sudoers.d/mooni-power
-  echo "Removed the power-control sudoers rule."
+  ok "Removed the power-control sudoers rule."
 fi
 
 # 2. Remove the built binary
 say "2/4 Remove the built binary"
 if [[ -f "$BIN_PATH" ]]; then
   rm -f "$BIN_PATH"
-  echo "Removed: $BIN_PATH"
+  ok "Removed: $BIN_PATH"
 else
-  echo "No binary found."
+  dim "No binary found."
 fi
 
 # 3. The shared storage folder is never deleted automatically - it's your
@@ -95,22 +151,22 @@ if [[ -n "$STORAGE_DIR" && -d "$STORAGE_DIR" ]]; then
   case "${choice:-1}" in
     2)
       echo
-      echo "WARNING: this permanently deletes everything in:"
-      echo "  $STORAGE_DIR"
+      printf '%s%sWARNING: this permanently deletes everything in:%s\n' "$RED" "$BOLD" "$RESET"
+      printf '%s%s  %s%s\n' "$RED" "$BOLD" "$STORAGE_DIR" "$RESET"
       read -rp "Type DELETE to confirm (anything else keeps the files): " confirm_word
       if [[ "$confirm_word" == "DELETE" ]]; then
         rm -rf "$STORAGE_DIR"
-        echo "Deleted: $STORAGE_DIR"
+        ok "Deleted: $STORAGE_DIR"
       else
-        echo "Aborted - files kept."
+        dim "Aborted - files kept."
       fi
       ;;
     *)
-      echo "Keeping all files."
+      dim "Keeping all files."
       ;;
   esac
 else
-  echo "No storage folder configured."
+  dim "No storage folder configured."
 fi
 
 # 4. Remove the config folder (API key + saved pairing codes + the installed
@@ -119,20 +175,20 @@ say "4/4 Remove the config folder"
 if [[ -d "$CONFIG_DIR" ]]; then
   if confirm "Remove $CONFIG_DIR (config + API key + saved pairing codes)?" "Y/n"; then
     rm -rf "$CONFIG_DIR"
-    echo "Removed: $CONFIG_DIR"
+    ok "Removed: $CONFIG_DIR"
   else
-    echo "Kept: $CONFIG_DIR"
+    dim "Kept: $CONFIG_DIR"
   fi
 else
-  echo "No config folder found."
+  dim "No config folder found."
 fi
 
 cat <<EOF
 
-Uninstall complete.
-- If you chose "keep files", everything under the storage folder is untouched.
+${GREEN}${BOLD}Uninstall complete.${RESET}
+${DIM}- If you chose "keep files", everything under the storage folder is untouched.
 - Existing pairing codes on phones stop working now that the service is
   stopped and the API key is deleted.
 - Go was left installed (it's a general tool). Remove it manually if you want:
-  sudo apt remove golang-go
+  sudo apt remove golang-go${RESET}
 EOF

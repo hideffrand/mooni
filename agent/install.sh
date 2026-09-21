@@ -13,6 +13,65 @@ BIN_DIR="$HOME/.local/bin"
 VERSION="latest"
 RUN_SETUP="auto"
 
+# Colors strip automatically when stdout isn't a terminal (piped output,
+# logs, CI) or when NO_COLOR is set.
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  BOLD=$'\e[1m'; DIM=$'\e[2m'
+  CYAN=$'\e[36m'; YELLOW=$'\e[33m'; GREEN=$'\e[32m'; RED=$'\e[31m'
+  RESET=$'\e[0m'
+else
+  BOLD=""; DIM=""; CYAN=""; YELLOW=""; GREEN=""; RED=""; RESET=""
+fi
+
+say() { printf '\n%s%s── %s ──%s\n' "$CYAN" "$BOLD" "$1" "$RESET"; }
+ok() { printf '%s%s✓%s %s\n' "$GREEN" "$BOLD" "$RESET" "$1"; }
+warn() { printf '%s%s!%s %s\n' "$YELLOW" "$BOLD" "$RESET" "$1"; }
+err() { printf '%s%s✗ %s%s\n' "$RED" "$BOLD" "$1" "$RESET" >&2; }
+dim() { printf '%s%s%s\n' "$DIM" "$1" "$RESET"; }
+
+# Renders the banner two-tone: solid blocks get BT (bold color), all
+# other glyphs get DT (dim). Char-by-char so UTF-8 is handled correctly.
+_render_art() {
+  local line out prev t i c
+  while IFS= read -r line; do
+    out=""; prev="s"
+    for ((i=0; i<${#line}; i++)); do
+      c="${line:i:1}"
+      case "$c" in
+        █) t="b" ;;
+        " ") t="$prev" ;;
+        *) t="d" ;;
+      esac
+      if [[ "$t" != "$prev" ]]; then
+        [[ "$t" == "b" ]] && out+="$BT" || out+="$DT"
+        prev="$t"
+      fi
+      out+="$c"
+    done
+    printf '%s%s\n' "$out" "$RESET"
+  done <<< "$1"
+}
+
+banner() {
+  printf '\n'
+  local art
+  art=$(cat <<'EOF'
+███╗   ███╗ ██████╗  ██████╗  ██████╗ ███╗   ██╗██╗
+████╗ ████║██╔═══██╗██╔═══██╗██╔═══██╗████╗  ██║██║
+██╔████╔██║██║   ██║██║   ██║██║   ██║██╔██╗ ██║██║
+██║╚██╔╝██║██║   ██║██║   ██║██║   ██║██║╚██╗██║██║
+██║ ╚═╝ ██║╚██████╔╝╚██████╔╝╚██████╔╝██║ ╚████║██║
+╚═╝     ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚═╝
+EOF
+)
+  if [[ -n "$CYAN" ]]; then
+    BT="$BOLD$CYAN" DT="$DIM" _render_art "$art"
+  else
+    printf '%s\n' "$art"
+  fi
+  dim "  agent installer - your files, from your PC to your phone"
+}
+
 usage() {
   cat <<'EOF'
 Usage: install.sh [options]
@@ -31,21 +90,19 @@ while [[ $# -gt 0 ]]; do
     --version) VERSION="$2"; shift 2 ;;
     --setup) RUN_SETUP="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "unknown argument: $1" >&2; usage >&2; exit 1 ;;
+    *) err "unknown argument: $1"; usage >&2; exit 1 ;;
   esac
 done
 
-say() { printf '\n=== %s ===\n' "$1"; }
-
 # --- Platform check ---------------------------------------------------------
 if [[ "$(uname -s)" != "Linux" ]]; then
-  echo "Mooni's agent only runs on Linux. Detected: $(uname -s)" >&2
+  err "Mooni's agent only runs on Linux. Detected: $(uname -s)"
   exit 1
 fi
 case "$(uname -m)" in
   x86_64|amd64) ARCH="amd64" ;;
   aarch64|arm64) ARCH="arm64" ;;
-  *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+  *) err "Unsupported architecture: $(uname -m)"; exit 1 ;;
 esac
 
 # Detect the install.sh location so a `bash agent/install.sh` run inside a
@@ -56,17 +113,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd 2>/dev/null || pwd)"
 mkdir -p "$BIN_DIR" "$CONFIG_DIR/bin"
 chmod 700 "$CONFIG_DIR"
 
+banner
+
 install_bin() { install -m 0755 "$1" "$BIN_DIR/$BIN_NAME"; }
 
 if [[ -f "$SCRIPT_DIR/go.mod" && -f "$SCRIPT_DIR/main.go" ]]; then
   say "Build from source (git checkout detected)"
   if ! command -v go >/dev/null 2>&1; then
-    echo "Go compiler not found - needed to build from a checkout." >&2
-    echo "Install Go (https://go.dev/dl/) or use the curl installer." >&2
+    err "Go compiler not found - needed to build from a checkout."
+    err "Install Go (https://go.dev/dl/) or use the curl installer."
     exit 1
   fi
   ( cd "$SCRIPT_DIR" && go build -trimpath -o "$BIN_DIR/$BIN_NAME" . )
-  echo "Built: $BIN_DIR/$BIN_NAME"
+  ok "Built: $BIN_DIR/$BIN_NAME"
   SETUP_SRC="$SCRIPT_DIR/setup.sh"
   UNINSTALL_SRC="$SCRIPT_DIR/uninstall.sh"
 else
@@ -81,11 +140,11 @@ else
   trap 'rm -rf "$TMP"' EXIT
   curl -fsSL "$BASE/$PKG" -o "$TMP/$PKG"
   curl -fsSL "$BASE/checksums.txt" -o "$TMP/checksums.txt"
-  echo "Verifying sha256 checksum..."
+  dim "Verifying sha256 checksum..."
   ( cd "$TMP" && grep " $PKG\$" checksums.txt | sha256sum -c - >/dev/null )
   tar -xzf "$TMP/$PKG" -C "$TMP"
   install_bin "$TMP/$BIN_NAME"
-  echo "Installed: $BIN_DIR/$BIN_NAME"
+  ok "Installed: $BIN_DIR/$BIN_NAME"
   SETUP_SRC="$TMP/setup.sh"
   UNINSTALL_SRC="$TMP/uninstall.sh"
 fi
@@ -102,22 +161,21 @@ if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     fi
   done
   echo
-  echo "Added $BIN_DIR to your PATH in ~/.bashrc (and ~/.profile)."
-  echo "Open a new terminal (or run: export PATH=\"$BIN_DIR:\$PATH\") so"
-  echo "'mooni-backend' is available on your PATH."
+  warn "Added $BIN_DIR to your PATH in ~/.bashrc (and ~/.profile)."
+  dim "Open a new terminal (or run: export PATH=\"$BIN_DIR:\$PATH\") so"
+  dim "'mooni-backend' is available on your PATH."
 fi
 
 say "Installed"
-echo "  binary  : $BIN_DIR/$BIN_NAME"
-echo "  setup   : $CONFIG_DIR/bin/setup.sh"
-echo "  uninstall: $CONFIG_DIR/bin/uninstall.sh"
+ok "binary    : $BIN_DIR/$BIN_NAME"
+ok "setup     : $CONFIG_DIR/bin/setup.sh"
+ok "uninstall : $CONFIG_DIR/bin/uninstall.sh"
 echo
-echo "Next step - run the interactive setup to pick folders and pair your phone:"
-echo "  bash $CONFIG_DIR/bin/setup.sh"
+printf '%sNext step - run the interactive setup to pick folders and pair your phone:%s\n' "$BOLD" "$RESET"printf '  %sbash %s/bin/setup.sh%s\n' "$CYAN" "$CONFIG_DIR" "$RESET"
 
 if [[ "$RUN_SETUP" == "auto" ]]; then
   echo
-  echo "Running interactive setup now..."
+  dim "Running interactive setup now..."
   bash "$CONFIG_DIR/bin/setup.sh"
 elif [[ "$RUN_SETUP" != "skip" ]]; then
   echo "unknown --setup value: $RUN_SETUP" >&2
