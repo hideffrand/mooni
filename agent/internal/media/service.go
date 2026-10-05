@@ -59,16 +59,12 @@ func (s *Service) resolve(userPath string) (string, error) {
 	return fsutil.Resolve(s.Root, userPath)
 }
 
-// warmCooldown spacing lets freshly-listed items settle (their thumbs were
-// likely just requested anyway) without re-walking on every list call.
+// warmCooldown lets freshly-listed items settle without re-walking on every list call.
 const warmCooldown = 2 * time.Minute
 
-// WarmAll schedules background generation of grid thumbs (and viewer large
-// previews) for every item, so first requests are served from disk instead of
-// paying decode/ffmpeg latency. In-process dedup: at most one pass per
-// cooldown; callers may invoke it on every list request. The warm pass
-// itself no-ops for already-cached files, so re-checking is cheap (one stat
-// per item) and also picks up files whose thumbnails were deleted manually.
+// WarmAll schedules background thumbnail/preview generation for every item so
+// first requests hit disk. At most one pass per cooldown; already-cached files
+// are skipped (one stat each), so calling it on every list request is cheap.
 func (s *Service) WarmAll(ctx context.Context, items []dto.MediaItem) {
 	if s.thumbGen == nil || len(items) == 0 {
 		return

@@ -25,7 +25,7 @@ const FEATURES: Feature[] = [
   {
     icon: FolderOpen,
     title: "File manager",
-    text: "Grab a file without getting up. Browse, upload, rename, move, or delete — photos and videos get thumbnails, everything else gets a colored tag so you know what it is at a glance.",
+    text: "Grab a file without getting up. Browse, upload, rename, move, or delete: photos and videos get thumbnails, everything else gets a colored tag so you know what it is at a glance.",
     demo: "files",
   },
   {
@@ -43,7 +43,7 @@ const FEATURES: Feature[] = [
   {
     icon: BellRing,
     title: "Threshold alerts",
-    text: "Set a limit once, then forget about it. Cross it, and your phone buzzes — a single notification with a cooldown, not a flood.",
+    text: "Set a limit once, then forget about it. Cross it, and your phone buzzes: a single notification with a cooldown, not a flood.",
     demo: "alerts",
   },
   {
@@ -77,7 +77,7 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
 
   return (
     <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
-      {/* left: features + how-it-works (children) — also the sticky phone's
+      {/* left: features + how-it-works (children), also the sticky phone's
           travel room: it spans both sections */}
       <div className="min-w-0 order-last lg:order-none">
         <section id="features" className="py-24">
@@ -87,7 +87,7 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
             </h2>
             <p className="mt-3 max-w-md text-[var(--text-3)]">
               One agent on your server, one app on your phone, nothing else
-              in between. Click a feature — the phone follows along.
+              in between. Click a feature, and the phone follows along.
             </p>
           </Reveal>
 
@@ -137,7 +137,7 @@ export default function FeatureTour({ children }: { children?: React.ReactNode }
                 <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-2)] opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--accent-2)]" />
             </span>
-            Interactive demo — the real app UI, mock data. Go ahead, tap around.
+            Interactive demo: the real app UI, mock data. Go ahead, tap around.
           </div>
         </div>
       </Reveal>

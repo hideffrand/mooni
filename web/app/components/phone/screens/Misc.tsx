@@ -308,7 +308,7 @@ export function ScanQRScreen() {
         <div className="mt-4 rounded-xl px-4 py-3" style={{ backgroundColor: colors.card }}>
           <div style={{ color: colors.textSecondary, fontSize: 12, lineHeight: "18px" }}>
             On the server run <span className="font-mono" style={{ color: colors.primary }}>`./mooni-backend -pair`</span>{" "}
-            — the QR carries your server address and API key, so treat it like a password.
+            : the QR carries your server address and API key, so treat it like a password.
           </div>
         </div>
       </div>

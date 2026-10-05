@@ -431,7 +431,7 @@ export function FilePreviewScreen({ name }: { name: string }) {
         <div className="mt-3 flex items-center gap-1.5 rounded-xl px-4 py-3" style={{ backgroundColor: colors.card }}>
           <ChevronLeft size={14} color={colors.textMuted} className="rotate-180" />
           <span style={{ color: colors.textMuted, fontSize: 12 }}>
-            Demo file — actions are decorative here.
+            Demo file: actions are decorative here.
           </span>
         </div>
       </div>

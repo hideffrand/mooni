@@ -107,7 +107,7 @@ export function MediaScreen({ path }: { path: string }) {
       )}
 
       <div className="px-4 pb-6 pt-5 text-center" style={{ color: colors.textMuted, fontSize: 11 }}>
-        Demo photos — in the real app each tile is a server thumbnail.
+        Demo photos: in the real app each tile is a server thumbnail.
       </div>
 
       {/* FAB (upload) */}

@@ -18,11 +18,11 @@ const heading = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Mooni — your server, in your pocket",
+  title: "Mooni: your server, in your pocket",
   description:
     "A self-hosted Android companion for the Linux machine you already run. Files, media, live health, and power control, over your own Tailscale network.",
   openGraph: {
-    title: "Mooni — your server, in your pocket",
+    title: "Mooni: your server, in your pocket",
     description:
       "A self-hosted Android companion for the Linux machine you already run, over your own Tailscale network. No cloud in the middle.",
     images: ["/mooni-hero.jpg"],
@@ -40,7 +40,7 @@ const STEPS = [
   },
   {
     title: "Scan and pair",
-    text: "Point your camera at the QR code the agent shows you. That's it — you're connected.",
+    text: "Point your camera at the QR code the agent shows you. That's it: you're connected.",
   },
 ];
 
@@ -180,7 +180,7 @@ export default function Home() {
               className="fade-up mt-4 max-w-md text-base leading-relaxed text-[var(--text-2)]"
               style={{ animationDelay: "180ms" }}
             >
-              Mooni is a companion app for the Linux machine you already run —
+              Mooni is a companion app for the Linux machine you already run:
               files, media, live health, and power control, all from your
               phone. Nothing opens to the public internet.
             </p>
@@ -336,7 +336,7 @@ export default function Home() {
       <footer className="border-t border-[var(--border)]">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-6 py-8 text-sm text-[var(--text-3)] sm:flex-row sm:items-center">
           <span>
-            mooni<span className="text-[var(--accent)]">.</span> — your server, in
+            mooni<span className="text-[var(--accent)]">.</span> your server, in
             your pocket.
           </span>
           <a

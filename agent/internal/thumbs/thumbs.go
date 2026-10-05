@@ -106,10 +106,8 @@ func (g *Generator) WarmIfMissing(abs string, info os.FileInfo, maxDim int) {
 	}
 }
 
-// WarmWait schedules generation like WarmIfMissing but blocks while the queue
-// is full, providing backpressure for full-library warm passes so no file is
-// silently skipped. Intended for background goroutines; the on-demand path
-// never needs it. Safe to call from any goroutine.
+// WarmWait is WarmIfMissing that blocks while the queue is full, so a
+// full-library pass can't silently skip files. For background goroutines.
 func (g *Generator) WarmWait(abs string, info os.FileInfo, maxDim int) {
 	if g.warm == nil || g.HasCached(abs, info, maxDim) {
 		return

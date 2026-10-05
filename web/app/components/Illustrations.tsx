@@ -1,4 +1,4 @@
-// Presentational illustrations. No client hooks — animation is pure CSS,
+// Presentational illustrations. No client hooks; animation is pure CSS,
 // gated behind `@media (prefers-reduced-motion: no-preference)` in the
 // <style> block declared once in app/page.tsx.
 

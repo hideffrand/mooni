@@ -10,7 +10,7 @@ const heading = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Mooni — Privacy Policy & Terms of Service",
+  title: "Mooni: Privacy Policy & Terms of Service",
   description:
     "Privacy policy and terms of service for the Mooni Android app. No analytics, no tracking, no cloud.",
 };

@@ -75,7 +75,7 @@ function MediaPlayer({
 
 /**
  * Vertical drag-to-dismiss wrapper (Google Photos style). Only claims the
- * gesture for a single-finger downward drag — unzoomed horizontal swipes
+ * gesture for a single-finger downward drag; unzoomed horizontal swipes
  * still reach the pager, and PinchZoomImage keeps priority while zoomed.
  * Reports drag progress (0..1) so the screen can fade background + bars.
  */

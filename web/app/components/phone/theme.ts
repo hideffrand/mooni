@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-// Keep in sync with mobile/src/context/ThemeContext.tsx — this is the exact
+// Keep in sync with mobile/src/context/ThemeContext.tsx: this is the exact
 // palette the real app uses.
 export interface ThemeColors {
   background: string;

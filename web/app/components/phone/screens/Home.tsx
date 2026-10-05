@@ -329,10 +329,10 @@ export default function HomeScreen({ power }: { power?: boolean }) {
         title: action === "reboot" ? "Rebooting" : action === "shutdown" ? "Shutting down" : "Locking",
         message:
           action === "reboot"
-            ? "The device is restarting. It will reappear when it's back online.\n\n(Demo — nothing was sent to a real machine.)"
+            ? "The device is restarting. It will reappear when it's back online.\n\n(Demo: nothing was sent to a real machine.)"
             : action === "shutdown"
-            ? "The device is powering off.\n\n(Demo — nothing was sent to a real machine.)"
-            : "The screen is now locked.\n\n(Demo — nothing was sent to a real machine.)",
+            ? "The device is powering off.\n\n(Demo: nothing was sent to a real machine.)"
+            : "The screen is now locked.\n\n(Demo: nothing was sent to a real machine.)",
       });
     }, 900);
   };

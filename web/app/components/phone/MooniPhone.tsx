@@ -101,7 +101,7 @@ export default function MooniPhone({ focus }: { focus?: { target: DemoTarget; no
     }
   }, [focus?.target, focus?.nonce]);
 
-  // Status-bar clock: rendered client-side only — a server-rendered Date()
+  // Status-bar clock: rendered client-side only; a server-rendered Date()
   // would bake the build-time time into the static HTML and break hydration
   // (React error #418).
   const [clock, setClock] = useState("");
@@ -115,7 +115,7 @@ export default function MooniPhone({ focus }: { focus?: { target: DemoTarget; no
     return () => clearInterval(id);
   }, []);
 
-  // Every navigation starts the new screen at the top — except the Power
+  // Every navigation starts the new screen at the top, except the Power
   // feature target, where the point is the Power section (bottom of Home).
   useEffect(() => {
     const el = scrollRef.current;

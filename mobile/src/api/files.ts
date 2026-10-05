@@ -134,7 +134,7 @@ function splitExt(name: string): [string, string] {
   return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, ""];
 }
 
-/** Picks `name.ext`, then `name (2).ext`, ... — first name not taken on disk. */
+/** Picks the first free name: `name.ext`, then `name (2).ext`, and so on. */
 async function uniqueDownloadPath(dir: string, fileName: string): Promise<string> {
   const [base, ext] = splitExt(fileName);
   let candidate = `${dir}/${fileName}`;
