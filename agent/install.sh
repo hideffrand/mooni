@@ -159,15 +159,22 @@ install -m 0755 "$UNINSTALL_SRC" "$CONFIG_DIR/bin/uninstall.sh"
 
 # Make sure the bin dir is on PATH (only if it isn't already).
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+  added=0
   for RC in "$HOME/.bashrc" "$HOME/.profile"; do
     if [[ -f "$RC" ]] && ! grep -qF "export PATH=\"$BIN_DIR:\$PATH\"" "$RC"; then
       printf '\nexport PATH="%s:$PATH"\n' "$BIN_DIR" >> "$RC"
+      added=1
     fi
   done
   echo
-  warn "Added $BIN_DIR to your PATH in ~/.bashrc (and ~/.profile)."
-  dim "Open a new terminal (or run: export PATH=\"$BIN_DIR:\$PATH\") so"
-  dim "'mooni-backend' is available on your PATH."
+  if [[ "$added" == "1" ]]; then
+    warn "Added $BIN_DIR to your PATH in ~/.bashrc (and ~/.profile)."
+    dim "Open a new terminal (or run: export PATH=\"$BIN_DIR:\$PATH\") so"
+    dim "'mooni-backend' is available on your PATH."
+  else
+    warn "$BIN_DIR is not on your PATH and no shell rc was found to update."
+    dim "Add it yourself: export PATH=\"$BIN_DIR:\$PATH\""
+  fi
 fi
 
 say "Installed"
