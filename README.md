@@ -56,8 +56,10 @@ The setup script walks you through everything: picks the folder the app may
 access, generates a secret key, optionally allows reboot/shutdown from the
 app, and finishes by printing a **QR code + pairing code** in your terminal.
 
-Alternatives: clone the repo and run `bash agent/install.sh` (builds from
-source), or build manually - see `agent/README.md`.
+The command above is the whole install - no clone, no build tools: it fetches
+a prebuilt binary. Only to run from source: clone the repo and run
+`bash agent/install.sh` (builds from source), or build manually - see
+`agent/README.md`.
 
 Redis is optional but nice-to-have: if a Redis server is running, add
 `MOONI_REDIS_ADDR=127.0.0.1:6379` (and optionally `MOONI_REDIS_PASSWORD`) to

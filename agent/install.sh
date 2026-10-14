@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Mooni agent - one-command curl installer.
-# Mirrored to web/public/install.sh - keep both in sync.
 # Non-interactive bootstrap: downloads a prebuilt binary (or builds from a
 # checkout), installs it, then hands off to the interactive setup script.
 # Safe for `curl ... | bash` - nothing here reads from stdin.
@@ -138,8 +137,13 @@ else
   PKG="mooni-backend-linux-$ARCH.tar.gz"
   TMP="$(mktemp -d)"
   trap 'rm -rf "$TMP"' EXIT
-  curl -fsSL "$BASE/$PKG" -o "$TMP/$PKG"
-  curl -fsSL "$BASE/checksums.txt" -o "$TMP/checksums.txt"
+  if ! curl -fsSL "$BASE/$PKG" -o "$TMP/$PKG" 2>/dev/null \
+    || ! curl -fsSL "$BASE/checksums.txt" -o "$TMP/checksums.txt" 2>/dev/null; then
+    err "No release asset for linux/$ARCH ($VERSION)."
+    dim "A release may not be published yet, or this architecture isn't built."
+    dim "Developers: clone the repo and run 'bash agent/install.sh' to build from source."
+    exit 1
+  fi
   dim "Verifying sha256 checksum..."
   ( cd "$TMP" && grep " $PKG\$" checksums.txt | sha256sum -c - >/dev/null )
   tar -xzf "$TMP/$PKG" -C "$TMP"
@@ -171,7 +175,8 @@ ok "binary    : $BIN_DIR/$BIN_NAME"
 ok "setup     : $CONFIG_DIR/bin/setup.sh"
 ok "uninstall : $CONFIG_DIR/bin/uninstall.sh"
 echo
-printf '%sNext step - run the interactive setup to pick folders and pair your phone:%s\n' "$BOLD" "$RESET"printf '  %sbash %s/bin/setup.sh%s\n' "$CYAN" "$CONFIG_DIR" "$RESET"
+printf '%sNext step - run the interactive setup to pick folders and pair your phone:%s\n' "$BOLD" "$RESET"
+printf '  %sbash %s/bin/setup.sh%s\n' "$CYAN" "$CONFIG_DIR" "$RESET"
 
 if [[ "$RUN_SETUP" == "auto" ]]; then
   echo

@@ -6,7 +6,7 @@ import { Check, Copy } from "lucide-react";
 export default function InstallCommand() {
   const [copied, setCopied] = useState(false);
   const command =
-    "curl -fsSL https://web-mooni.vercel.app/install.sh | bash";
+    "curl -fsSL https://raw.githubusercontent.com/hideffrand/mooni/main/agent/install.sh | bash";
 
   const copy = async () => {
     try {
