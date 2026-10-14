@@ -187,8 +187,17 @@ printf '  %sbash %s/bin/setup.sh%s\n' "$CYAN" "$CONFIG_DIR" "$RESET"
 
 if [[ "$RUN_SETUP" == "auto" ]]; then
   echo
-  dim "Running interactive setup now..."
-  bash "$CONFIG_DIR/bin/setup.sh"
+  # Under `curl | bash` stdin is the (exhausted) pipe, so the interactive
+  # prompts in setup.sh would hit EOF and abort. Hand it the real terminal
+  # when one exists; `-r /dev/tty` lies (permission, not availability), so
+  # probe by actually opening it.
+  if ( exec </dev/tty ) 2>/dev/null; then
+    dim "Running interactive setup now..."
+    bash "$CONFIG_DIR/bin/setup.sh" < /dev/tty
+  else
+    warn "No terminal for the interactive setup. Run it when you're ready:"
+    dim "  bash $CONFIG_DIR/bin/setup.sh"
+  fi
 elif [[ "$RUN_SETUP" != "skip" ]]; then
   echo "unknown --setup value: $RUN_SETUP" >&2
   exit 1
